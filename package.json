@@ -4,14 +4,18 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run extract-images && npm run process-calendars && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "process-calendars": "node scripts/process-calendars.js",
+    "extract-images": "node scripts/extract-images.js"
   },
   "dependencies": {
+    "exceljs": "^4.4.0",
     "next": "16.0.3",
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
