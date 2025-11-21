@@ -3,6 +3,7 @@
 import { MonthlyData, CalendarEvent } from '@/types/calendar';
 import { parseDayFromDate, formatMonthName, getMonthImagePath } from '@/lib/utils/calendar-data';
 import { useState, useEffect } from 'react';
+import CampaignModal from './CampaignModal';
 
 interface MonthCardProps {
   monthData: MonthlyData;
@@ -10,10 +11,20 @@ interface MonthCardProps {
   isCompact?: boolean;
 }
 
+interface CampaignIdea {
+  title: string;
+  description: string;
+  channels: string[];
+  targetDate?: string | null;
+}
+
 export default function MonthCard({ monthData, promotionalEvents, isCompact = false }: MonthCardProps) {
   const monthName = formatMonthName(monthData.month);
   const imagePath = monthData.imagePath || getMonthImagePath(monthData.month);
   const [imageError, setImageError] = useState(false);
+  const [showCampaignModal, setShowCampaignModal] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [campaignIdeas, setCampaignIdeas] = useState<CampaignIdea[]>([]);
   
   useEffect(() => {
     setImageError(false);
@@ -41,6 +52,42 @@ export default function MonthCard({ monthData, promotionalEvents, isCompact = fa
       return dateMatch[2];
     }
     return event.event.replace(event.date, '').trim() || event.event;
+  };
+
+  const handleGenerateCampaigns = async () => {
+    setIsGenerating(true);
+    setShowCampaignModal(true);
+    
+    try {
+      const response = await fetch('/api/generate-campaign', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          month: monthName,
+          themes: monthData.themes,
+          events: dailyEvents,
+          highlightedDates: highlightedEvents,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate campaigns');
+      }
+
+      const data = await response.json();
+      setCampaignIdeas(data.campaigns || []);
+    } catch (error) {
+      console.error('Error generating campaigns:', error);
+      setCampaignIdeas([{
+        title: 'Error',
+        description: 'Failed to generate campaign ideas. Please check your OpenAI API key configuration.',
+        channels: [],
+      }]);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -119,13 +166,36 @@ export default function MonthCard({ monthData, promotionalEvents, isCompact = fa
         )}
 
         {/* AI Campaign Button */}
-        <button className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-          </svg>
-          Generate AI Campaign Ideas
+        <button 
+          onClick={handleGenerateCampaigns}
+          disabled={isGenerating}
+          className="w-full mt-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+        >
+          {isGenerating ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+              Generating...
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+              Generate AI Campaign Ideas
+            </>
+          )}
         </button>
       </div>
+
+      {/* Campaign Modal */}
+      {showCampaignModal && (
+        <CampaignModal
+          month={monthName}
+          campaigns={campaignIdeas}
+          isGenerating={isGenerating}
+          onClose={() => setShowCampaignModal(false)}
+        />
+      )}
     </div>
   );
 }

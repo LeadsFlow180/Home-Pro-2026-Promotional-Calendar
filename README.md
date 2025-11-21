@@ -35,6 +35,23 @@ This app requires:
 
 Please place these files in the project root or `data/` directory for processing.
 
+## OpenAI API Setup
+
+To enable AI campaign generation:
+
+1. Get your OpenAI API key from [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+
+2. Create a `.env.local` file in the project root:
+   ```bash
+   OPENAI_API_KEY=your_api_key_here
+   ```
+
+3. Restart your development server after adding the API key
+
+4. Click "Generate AI Campaign Ideas" on any month card to get AI-powered marketing campaign suggestions
+
+**Note**: The API key is stored locally and never committed to version control (`.env.local` is in `.gitignore`).
+
 ## Learn More
 
 - [Next.js Documentation](https://nextjs.org/docs)
