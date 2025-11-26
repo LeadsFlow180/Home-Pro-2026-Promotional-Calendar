@@ -30,16 +30,51 @@ export default function MonthCard({ monthData, promotionalEvents, isCompact = fa
     setImageError(false);
   }, [monthData.month]);
   
-  // Separate events by type
-  const highlightedEvents = [
-    ...monthData.highlightedDates,
-    ...promotionalEvents.filter(e => e.type === 'highlighted')
-  ];
+  // Helper function to create a unique key for an event
+  const getEventKey = (event: CalendarEvent) => {
+    // Normalize the date and event name for comparison
+    const normalizedDate = event.date.toLowerCase().trim();
+    const normalizedEvent = event.event.toLowerCase().trim();
+    return `${normalizedDate}|${normalizedEvent}`;
+  };
+
+  // Separate events by type and deduplicate
+  const highlightedEventsMap = new Map<string, CalendarEvent>();
   
-  const dailyEvents = [
-    ...monthData.events,
-    ...promotionalEvents.filter(e => e.type === 'daily' || e.type === 'promotional')
-  ].sort((a, b) => {
+  // Add highlighted dates from monthData
+  monthData.highlightedDates.forEach(event => {
+    highlightedEventsMap.set(getEventKey(event), event);
+  });
+  
+  // Add highlighted events from promotionalEvents (2026 data)
+  promotionalEvents
+    .filter(e => e.type === 'highlighted')
+    .forEach(event => {
+      if (!highlightedEventsMap.has(getEventKey(event))) {
+        highlightedEventsMap.set(getEventKey(event), event);
+      }
+    });
+  
+  const highlightedEvents = Array.from(highlightedEventsMap.values());
+  
+  // Deduplicate daily events
+  const dailyEventsMap = new Map<string, CalendarEvent>();
+  
+  // Add events from monthData (2024 data)
+  monthData.events.forEach(event => {
+    dailyEventsMap.set(getEventKey(event), event);
+  });
+  
+  // Add promotional events from 2026 data (only if not already present)
+  promotionalEvents
+    .filter(e => e.type === 'daily' || e.type === 'promotional')
+    .forEach(event => {
+      if (!dailyEventsMap.has(getEventKey(event))) {
+        dailyEventsMap.set(getEventKey(event), event);
+      }
+    });
+  
+  const dailyEvents = Array.from(dailyEventsMap.values()).sort((a, b) => {
     const dayA = parseDayFromDate(a.date) || 0;
     const dayB = parseDayFromDate(b.date) || 0;
     return dayA - dayB;
@@ -73,16 +108,17 @@ export default function MonthCard({ monthData, promotionalEvents, isCompact = fa
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate campaigns');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to generate campaigns: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
       setCampaignIdeas(data.campaigns || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating campaigns:', error);
       setCampaignIdeas([{
         title: 'Error',
-        description: 'Failed to generate campaign ideas. Please check your OpenAI API key configuration.',
+        description: error.message || 'Failed to generate campaign ideas. Please check your OpenAI API key configuration and try again.',
         channels: [],
       }]);
     } finally {
@@ -92,13 +128,34 @@ export default function MonthCard({ monthData, promotionalEvents, isCompact = fa
 
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-200">
-      {/* Month Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xl font-bold">{monthName}</h3>
-          <button className="text-sm text-white/80 hover:text-white underline">
-            Export & Share
-          </button>
+      {/* Month Image */}
+      <div className="relative h-48 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
+        {!imageError && imagePath ? (
+          <img
+            src={imagePath}
+            alt={`${monthName} promotional image`}
+            className="w-full h-full object-cover"
+            style={{ objectPosition: monthName === 'June' ? 'center 30%' : 'center center' }}
+            onError={() => setImageError(true)}
+            onLoad={() => setImageError(false)}
+          />
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center text-white/80">
+              <svg className="w-16 h-16 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+              </svg>
+              <p className="text-sm font-semibold">{monthName}</p>
+            </div>
+          </div>
+        )}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-bold text-white">{monthName}</h3>
+            <button className="text-xs text-white/80 hover:text-white underline">
+              Export & Share
+            </button>
+          </div>
         </div>
       </div>
 

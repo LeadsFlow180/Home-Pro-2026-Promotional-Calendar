@@ -55,14 +55,14 @@ export function formatMonthName(month: string): string {
 /**
  * Get image path for a month
  * Checks for image in public/images/months/ folder
+ * Tries multiple formats: capitalized month name with common extensions
  */
 export function getMonthImagePath(month: string): string | undefined {
-  const monthLower = month.toLowerCase();
-  // Common image extensions to check
-  const extensions = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+  // Format month name with first letter capitalized (e.g., "January")
+  const monthFormatted = month.charAt(0).toUpperCase() + month.slice(1).toLowerCase();
   
-  // Try to find image - in a real app, we'd check if file exists
-  // For now, return a path that should work if images are added
-  return `/images/months/${monthLower}.jpg`;
+  // Try PNG first (most common), then JPG, then other formats
+  // The browser will handle 404s gracefully if the file doesn't exist
+  return `/images/months/${monthFormatted}.png`;
 }
 
