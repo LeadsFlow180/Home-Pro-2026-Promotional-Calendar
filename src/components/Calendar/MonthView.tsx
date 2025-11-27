@@ -3,6 +3,15 @@
 import { useState, useEffect } from 'react';
 import { MonthlyData, CalendarEvent } from '@/types/calendar';
 import { parseDayFromDate, formatMonthName, getMonthImagePath } from '@/lib/utils/calendar-data';
+import EventDetailModal from './EventDetailModal';
+import CampaignSection from './CampaignSection';
+
+interface CampaignIdea {
+  title: string;
+  description: string;
+  channels: string[];
+  targetDate?: string | null;
+}
 
 interface MonthViewProps {
   monthData: MonthlyData;
@@ -13,11 +22,39 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
   const monthName = formatMonthName(monthData.month);
   const imagePath = monthData.imagePath || getMonthImagePath(monthData.month);
   const [imageError, setImageError] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [campaignIdeas, setCampaignIdeas] = useState<CampaignIdea[]>([]);
+  const [isEventsListExpanded, setIsEventsListExpanded] = useState(true);
+  const [eventFilter, setEventFilter] = useState<'all' | 'highlighted' | 'promotional' | 'daily'>('all');
   
   // Reset image error when month changes
   useEffect(() => {
     setImageError(false);
+    setSelectedEvent(null);
+    setCampaignIdeas([]);
   }, [monthData.month]);
+
+  // Get month index (0-11) for date calculations
+  const getMonthIndex = (monthName: string): number => {
+    const months = ['january', 'february', 'march', 'april', 'may', 'june', 
+                   'july', 'august', 'september', 'october', 'november', 'december'];
+    return months.indexOf(monthName.toLowerCase());
+  };
+
+  // Get days in month and first day of week
+  const getCalendarDays = () => {
+    const year = 2026; // Using 2026 as base year
+    const monthIndex = getMonthIndex(monthData.month);
+    const firstDay = new Date(year, monthIndex, 1);
+    const lastDay = new Date(year, monthIndex + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    
+    return { daysInMonth, startingDayOfWeek };
+  };
+
+  const { daysInMonth, startingDayOfWeek } = getCalendarDays();
   
   // Combine all events and sort by day
   const allEvents = [
@@ -30,10 +67,6 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
     return dayA - dayB;
   });
 
-  // Get days in month (simplified - assumes 31 days max)
-  const daysInMonth = 31;
-  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-
   // Group events by day
   const eventsByDay = new Map<number, CalendarEvent[]>();
   allEvents.forEach(event => {
@@ -45,6 +78,105 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
       eventsByDay.get(day)!.push(event);
     }
   });
+
+  // Extract just the event name (remove date prefix)
+  const getEventName = (event: CalendarEvent) => {
+    const dateMatch = event.date.match(/\d+(st|nd|rd|th)\s*-\s*(.+)/);
+    if (dateMatch) {
+      return dateMatch[2];
+    }
+    return event.event.replace(event.date, '').trim() || event.event;
+  };
+
+  const handleGenerateCampaigns = async () => {
+    if (isGenerating) return;
+
+    setIsGenerating(true);
+    setCampaignIdeas([]);
+    
+    try {
+      const serializableEvents = allEvents
+        .filter(e => e.type === 'daily' || e.type === 'promotional')
+        .map(event => ({
+          date: event.date || '',
+          event: event.event || '',
+          type: event.type || 'daily',
+        }));
+
+      const serializableHighlightedDates = allEvents
+        .filter(e => e.type === 'highlighted')
+        .map(event => ({
+          date: event.date || '',
+          event: event.event || '',
+          type: event.type || 'highlighted',
+        }));
+
+      const requestBody = JSON.stringify({
+        month: monthName,
+        themes: Array.isArray(monthData.themes) ? monthData.themes : [],
+        events: serializableEvents,
+        highlightedDates: serializableHighlightedDates,
+      });
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+      
+      const response = await fetch('/api/generate-campaign', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: requestBody,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        let errorData = {};
+        try {
+          errorData = await response.json();
+        } catch {
+          // If response isn't JSON, use status text
+        }
+        throw new Error(errorData.error || `Failed to generate campaigns: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (data && Array.isArray(data.campaigns)) {
+        setCampaignIdeas(data.campaigns);
+      } else {
+        throw new Error('Invalid response format from server');
+      }
+    } catch (error: any) {
+      console.error('Error generating campaigns:', error);
+      
+      let errorMessage = 'Failed to generate campaign ideas. Please check your OpenAI API key configuration and try again.';
+      
+      if (error.name === 'AbortError') {
+        errorMessage = 'Request timed out. The AI is taking too long to respond. Please try again.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setCampaignIdeas([{
+        title: 'Error',
+        description: errorMessage,
+        channels: [],
+      }]);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Create calendar grid with empty cells for days before month starts
+  const calendarDays: (number | null)[] = [];
+  for (let i = 0; i < startingDayOfWeek; i++) {
+    calendarDays.push(null);
+  }
+  for (let i = 1; i <= daysInMonth; i++) {
+    calendarDays.push(i);
+  }
 
   return (
     <div className="w-full space-y-6">
@@ -74,10 +206,20 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
           </div>
         </div>
         
+        {/* Export & Share Button */}
+        <div className="p-6 border-t border-gray-100 flex justify-end">
+          <button className="text-sm text-gray-600 hover:text-gray-900 font-medium px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+            </svg>
+            Export & Share
+          </button>
+        </div>
+
         {/* Monthly Themes */}
         {monthData.themes.length > 0 && (
-          <div className="p-6 border-t border-gray-100">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Monthly Themes</h3>
+          <div className="px-6 pb-6 border-t border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3 pt-6">Monthly Themes</h3>
             <div className="flex flex-wrap gap-2">
               {monthData.themes.map((theme, index) => (
                 <span
@@ -104,7 +246,11 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
           ))}
 
           {/* Calendar days */}
-          {days.map(day => {
+          {calendarDays.map((day, index) => {
+            if (day === null) {
+              return <div key={`empty-${index}`} className="min-h-20 sm:min-h-24"></div>;
+            }
+
             const dayEvents = eventsByDay.get(day) || [];
             const hasHighlighted = dayEvents.some(e => e.type === 'highlighted');
             const hasPromotional = dayEvents.some(e => e.type === 'promotional');
@@ -115,14 +261,20 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
                 className={`
                   min-h-20 sm:min-h-24 p-2 rounded-xl border-2 transition-all duration-200
                   ${hasHighlighted 
-                    ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-300 shadow-md' 
+                    ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-300 shadow-md cursor-pointer hover:shadow-lg' 
                     : hasPromotional 
-                    ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-300 shadow-md'
+                    ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-300 shadow-md cursor-pointer hover:shadow-lg'
                     : dayEvents.length > 0
-                    ? 'bg-blue-50 border-blue-200'
+                    ? 'bg-blue-50 border-blue-200 cursor-pointer hover:shadow-md'
                     : 'bg-gray-50 border-gray-200 hover:border-gray-300'
                   }
                 `}
+                onClick={() => {
+                  if (dayEvents.length > 0) {
+                    // Show first event when clicking on day
+                    setSelectedEvent(dayEvents[0]);
+                  }
+                }}
               >
                 <div className={`font-bold text-sm mb-1 ${dayEvents.length > 0 ? 'text-gray-900' : 'text-gray-500'}`}>
                   {day}
@@ -131,19 +283,33 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
                   {dayEvents.slice(0, 2).map((event, idx) => (
                     <div
                       key={idx}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedEvent(event);
+                      }}
                       className={`
-                        text-xs p-1.5 rounded-lg font-medium truncate shadow-sm
-                        ${event.type === 'highlighted' ? 'bg-yellow-200 text-yellow-900' : ''}
-                        ${event.type === 'promotional' ? 'bg-green-200 text-green-900' : ''}
-                        ${event.type === 'daily' ? 'bg-blue-200 text-blue-900' : ''}
+                        text-xs p-1.5 rounded-lg font-medium truncate shadow-sm hover:shadow-md transition-shadow
+                        ${event.type === 'highlighted' ? 'bg-yellow-200 text-yellow-900 hover:bg-yellow-300' : ''}
+                        ${event.type === 'promotional' ? 'bg-green-200 text-green-900 hover:bg-green-300' : ''}
+                        ${event.type === 'daily' ? 'bg-blue-200 text-blue-900 hover:bg-blue-300' : ''}
                       `}
-                      title={event.event}
+                      title={getEventName(event)}
                     >
-                      {event.event.length > 15 ? event.event.substring(0, 15) + '...' : event.event}
+                      {getEventName(event).length > 15 ? getEventName(event).substring(0, 15) + '...' : getEventName(event)}
                     </div>
                   ))}
                   {dayEvents.length > 2 && (
-                    <div className="text-xs text-gray-500 font-semibold">+{dayEvents.length - 2} more</div>
+                    <div 
+                      className="text-xs text-gray-500 font-semibold cursor-pointer hover:text-gray-700"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (dayEvents.length > 0) {
+                          setSelectedEvent(dayEvents[0]);
+                        }
+                      }}
+                    >
+                      +{dayEvents.length - 2} more
+                    </div>
                   )}
                 </div>
               </div>
@@ -154,46 +320,154 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
 
       {/* Event List - Card Design */}
       <div className="bg-white rounded-2xl shadow-xl p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <h3 className="text-2xl font-bold text-gray-900">All Events for {monthName}</h3>
-          <div className="flex gap-2">
-            <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">Highlighted</span>
-            <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">Promotional</span>
-            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">Daily</span>
+          <button
+            onClick={() => setIsEventsListExpanded(!isEventsListExpanded)}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <span className="text-sm font-medium">
+              {isEventsListExpanded ? 'Collapse' : 'Expand'}
+            </span>
+            <svg 
+              className={`w-5 h-5 transition-transform ${isEventsListExpanded ? 'rotate-180' : ''}`}
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Legend */}
+        <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+          <h4 className="text-sm font-semibold text-gray-700 mb-3">Event Type Legend:</h4>
+          <div className="flex flex-wrap gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded bg-yellow-200 border-2 border-yellow-300"></div>
+              <span className="text-sm text-gray-700">
+                <span className="font-semibold">Yellow</span> = Highlighted (major holidays)
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded bg-green-200 border-2 border-green-300"></div>
+              <span className="text-sm text-gray-700">
+                <span className="font-semibold">Green</span> = Promotional (marketing opportunities)
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded bg-blue-200 border-2 border-blue-300"></div>
+              <span className="text-sm text-gray-700">
+                <span className="font-semibold">Blue</span> = Daily (fun/unofficial holidays)
+              </span>
+            </div>
           </div>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {allEvents.map((event, index) => (
-            <div
-              key={index}
-              className={`
-                p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-lg hover:scale-105
-                ${event.type === 'highlighted' 
-                  ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-300' 
-                  : event.type === 'promotional'
-                  ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-300'
-                  : 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-300'
-                }
-              `}
-            >
-              <div className="flex items-start gap-3">
-                <span className={`
-                  px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap
-                  ${event.type === 'highlighted' ? 'bg-yellow-200 text-yellow-900' : ''}
-                  ${event.type === 'promotional' ? 'bg-green-200 text-green-900' : ''}
-                  ${event.type === 'daily' ? 'bg-blue-200 text-blue-900' : ''}
-                `}>
-                  {event.type.toUpperCase()}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-gray-900 text-sm mb-1">{event.date}</div>
-                  <div className="text-gray-700 text-sm">{event.event.replace(event.date, '').trim() || event.event}</div>
-                </div>
-              </div>
-            </div>
-          ))}
+
+        {/* Filters */}
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button
+            onClick={() => setEventFilter('all')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              eventFilter === 'all'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            All Events
+          </button>
+          <button
+            onClick={() => setEventFilter('highlighted')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              eventFilter === 'highlighted'
+                ? 'bg-yellow-500 text-white'
+                : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+            }`}
+          >
+            Highlighted
+          </button>
+          <button
+            onClick={() => setEventFilter('promotional')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              eventFilter === 'promotional'
+                ? 'bg-green-500 text-white'
+                : 'bg-green-100 text-green-800 hover:bg-green-200'
+            }`}
+          >
+            Promotional
+          </button>
+          <button
+            onClick={() => setEventFilter('daily')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              eventFilter === 'daily'
+                ? 'bg-blue-500 text-white'
+                : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+            }`}
+          >
+            Daily
+          </button>
         </div>
+
+        {/* Events Grid - Collapsible */}
+        {isEventsListExpanded && (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {allEvents
+              .filter(event => eventFilter === 'all' || event.type === eventFilter)
+              .map((event, index) => (
+                <div
+                  key={index}
+                  onClick={() => setSelectedEvent(event)}
+                  className={`
+                    p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-lg hover:scale-105 cursor-pointer
+                    ${event.type === 'highlighted' 
+                      ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-300' 
+                      : event.type === 'promotional'
+                      ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-300'
+                      : 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-300'
+                    }
+                  `}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className={`
+                      px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap
+                      ${event.type === 'highlighted' ? 'bg-yellow-200 text-yellow-900' : ''}
+                      ${event.type === 'promotional' ? 'bg-green-200 text-green-900' : ''}
+                      ${event.type === 'daily' ? 'bg-blue-200 text-blue-900' : ''}
+                    `}>
+                      {event.type.toUpperCase()}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-gray-900 text-sm mb-1">{event.date}</div>
+                      <div className="text-gray-700 text-sm">{getEventName(event)}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            {allEvents.filter(event => eventFilter === 'all' || event.type === eventFilter).length === 0 && (
+              <div className="col-span-full text-center py-8 text-gray-500">
+                No events found for the selected filter.
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Campaign Ideas Section */}
+      <CampaignSection
+        month={monthName}
+        campaigns={campaignIdeas}
+        isGenerating={isGenerating}
+        onGenerate={handleGenerateCampaigns}
+      />
+
+      {/* Event Detail Modal */}
+      {selectedEvent && (
+        <EventDetailModal
+          event={selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+        />
+      )}
     </div>
   );
 }

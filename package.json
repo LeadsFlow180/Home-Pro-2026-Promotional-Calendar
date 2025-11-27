@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "process-calendars": "node scripts/process-calendars.js",
-    "extract-images": "node scripts/extract-images.js"
+    "extract-images": "node scripts/extract-images.js",
+    "populate-descriptions": "node scripts/populate-event-descriptions.js"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

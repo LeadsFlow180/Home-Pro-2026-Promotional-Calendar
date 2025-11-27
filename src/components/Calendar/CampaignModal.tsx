@@ -1,5 +1,8 @@
 'use client';
 
+import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
+
 interface CampaignIdea {
   title: string;
   description: string;
@@ -15,18 +18,90 @@ interface CampaignModalProps {
 }
 
 export default function CampaignModal({ month, campaigns, isGenerating, onClose }: CampaignModalProps) {
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-      <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        {/* Background overlay */}
-        <div 
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-          onClick={onClose}
-        ></div>
+  console.log('🎨 CampaignModal rendering - month:', month, 'isGenerating:', isGenerating, 'campaigns:', campaigns.length);
+  
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    console.log('🎨 CampaignModal useEffect - setting up modal');
+    const originalOverflow = document.body.style.overflow;
+    const originalPaddingRight = document.body.style.paddingRight;
+    
+    // Calculate scrollbar width to prevent layout shift
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    
+    document.body.style.overflow = 'hidden';
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+    
+    // Prevent ESC key from closing
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isGenerating) {
+        onClose();
+      }
+    };
+    
+    document.addEventListener('keydown', handleEscape);
+    
+    return () => {
+      console.log('🎨 CampaignModal cleanup');
+      document.body.style.overflow = originalOverflow;
+      document.body.style.paddingRight = originalPaddingRight;
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [onClose, isGenerating]);
 
+  // Only render portal on client side
+  if (typeof window === 'undefined') {
+    console.log('⚠️ CampaignModal - window is undefined, returning null');
+    return null;
+  }
+
+  if (!document.body) {
+    console.error('❌ CampaignModal - document.body is not available');
+    return null;
+  }
+
+  console.log('✅ CampaignModal - creating portal to document.body');
+  
+  const modalContent = (
+    <div 
+      className="fixed inset-0 overflow-y-auto" 
+      aria-labelledby="modal-title" 
+      role="dialog" 
+      aria-modal="true"
+      style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 99999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)'
+      }}
+      onClick={(e) => {
+        // Close modal when clicking the backdrop
+        if (e.target === e.currentTarget && !isGenerating) {
+          onClose();
+        }
+      }}
+    >
+      <div className="relative w-full max-w-4xl mx-auto my-8 px-4">
         {/* Modal panel */}
-        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-          <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+        <div 
+          className="bg-white rounded-lg shadow-xl overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'relative',
+            zIndex: 100000,
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}
+        >
+          <div className="px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-2xl font-bold text-gray-900">
                 AI Campaign Ideas for {month}
@@ -98,5 +173,8 @@ export default function CampaignModal({ month, campaigns, isGenerating, onClose 
       </div>
     </div>
   );
+
+  // Render modal using portal to body to avoid z-index and rendering issues
+  return createPortal(modalContent, document.body);
 }
 

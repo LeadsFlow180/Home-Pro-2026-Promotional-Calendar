@@ -9,6 +9,7 @@ interface MonthCardProps {
   monthData: MonthlyData;
   promotionalEvents: CalendarEvent[];
   isCompact?: boolean;
+  onClick?: () => void;
 }
 
 interface CampaignIdea {
@@ -18,7 +19,7 @@ interface CampaignIdea {
   targetDate?: string | null;
 }
 
-export default function MonthCard({ monthData, promotionalEvents, isCompact = false }: MonthCardProps) {
+export default function MonthCard({ monthData, promotionalEvents, isCompact = false, onClick }: MonthCardProps) {
   const monthName = formatMonthName(monthData.month);
   const imagePath = monthData.imagePath || getMonthImagePath(monthData.month);
   const [imageError, setImageError] = useState(false);
@@ -90,35 +91,92 @@ export default function MonthCard({ monthData, promotionalEvents, isCompact = fa
   };
 
   const handleGenerateCampaigns = async () => {
+    console.log('🔵 Button clicked - handleGenerateCampaigns called');
+    
+    // Prevent multiple simultaneous requests
+    if (isGenerating) {
+      console.log('⚠️ Already generating, ignoring click');
+      return;
+    }
+
+    console.log('✅ Starting campaign generation...');
     setIsGenerating(true);
     setShowCampaignModal(true);
+    setCampaignIdeas([]); // Clear previous results
+    console.log('✅ Modal state set to show');
     
     try {
+      // Safely serialize events - only include serializable properties
+      const serializableEvents = dailyEvents.map(event => ({
+        date: event.date || '',
+        event: event.event || '',
+        type: event.type || 'daily',
+      }));
+
+      const serializableHighlightedDates = highlightedEvents.map(event => ({
+        date: event.date || '',
+        event: event.event || '',
+        type: event.type || 'highlighted',
+      }));
+
+      // Validate data before stringifying
+      let requestBody;
+      try {
+        requestBody = JSON.stringify({
+          month: monthName,
+          themes: Array.isArray(monthData.themes) ? monthData.themes : [],
+          events: serializableEvents,
+          highlightedDates: serializableHighlightedDates,
+        });
+      } catch (serializationError: any) {
+        throw new Error(`Failed to prepare request data: ${serializationError.message}`);
+      }
+
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+      
       const response = await fetch('/api/generate-campaign', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          month: monthName,
-          themes: monthData.themes,
-          events: dailyEvents,
-          highlightedDates: highlightedEvents,
-        }),
+        body: requestBody,
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        let errorData = {};
+        try {
+          errorData = await response.json();
+        } catch {
+          // If response isn't JSON, use status text
+        }
         throw new Error(errorData.error || `Failed to generate campaigns: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      setCampaignIdeas(data.campaigns || []);
+      if (data && Array.isArray(data.campaigns)) {
+        setCampaignIdeas(data.campaigns);
+      } else {
+        throw new Error('Invalid response format from server');
+      }
     } catch (error: any) {
       console.error('Error generating campaigns:', error);
+      
+      let errorMessage = 'Failed to generate campaign ideas. Please check your OpenAI API key configuration and try again.';
+      
+      if (error.name === 'AbortError') {
+        errorMessage = 'Request timed out. The AI is taking too long to respond. Please try again.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       setCampaignIdeas([{
         title: 'Error',
-        description: error.message || 'Failed to generate campaign ideas. Please check your OpenAI API key configuration and try again.',
+        description: errorMessage,
         channels: [],
       }]);
     } finally {
@@ -127,7 +185,10 @@ export default function MonthCard({ monthData, promotionalEvents, isCompact = fa
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-200">
+    <div 
+      className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-200 cursor-pointer"
+      onClick={onClick}
+    >
       {/* Month Image */}
       <div className="relative h-48 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
         {!imageError && imagePath ? (
@@ -150,16 +211,27 @@ export default function MonthCard({ monthData, promotionalEvents, isCompact = fa
           </div>
         )}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-white">{monthName}</h3>
-            <button className="text-xs text-white/80 hover:text-white underline">
-              Export & Share
-            </button>
-          </div>
+          <h3 className="text-xl font-bold text-white">{monthName}</h3>
         </div>
       </div>
 
       <div className="p-4 space-y-4">
+        {/* Export & Share Button */}
+        <div className="flex justify-end mb-2">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              // TODO: Implement export & share functionality
+            }}
+            className="text-sm text-gray-600 hover:text-gray-900 font-medium px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+            </svg>
+            Export & Share
+          </button>
+        </div>
+
         {/* Monthly Themes */}
         {monthData.themes.length > 0 && (
           <div>
@@ -224,7 +296,14 @@ export default function MonthCard({ monthData, promotionalEvents, isCompact = fa
 
         {/* AI Campaign Button */}
         <button 
-          onClick={handleGenerateCampaigns}
+          type="button"
+          onClick={(e) => {
+            console.log('🟢 Button onClick handler fired');
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🟢 Calling handleGenerateCampaigns...');
+            handleGenerateCampaigns();
+          }}
           disabled={isGenerating}
           className="w-full mt-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
         >
@@ -250,7 +329,10 @@ export default function MonthCard({ monthData, promotionalEvents, isCompact = fa
           month={monthName}
           campaigns={campaignIdeas}
           isGenerating={isGenerating}
-          onClose={() => setShowCampaignModal(false)}
+          onClose={() => {
+            console.log('🔴 Closing modal');
+            setShowCampaignModal(false);
+          }}
         />
       )}
     </div>

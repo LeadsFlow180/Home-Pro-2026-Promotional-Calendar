@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { loadCalendarData, getEventsForMonth, getAvailableMonths } from '@/lib/utils/calendar-data';
 import MonthCard from './MonthCard';
+import MonthView from './MonthView';
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -14,8 +15,13 @@ export default function CalendarView() {
 
   useEffect(() => {
     setMounted(true);
-    const data = loadCalendarData();
-    setCalendarData(data);
+    try {
+      const data = loadCalendarData();
+      setCalendarData(data);
+    } catch (error) {
+      console.error('Error loading calendar data:', error);
+      // Keep calendarData as null to show loading/error state
+    }
   }, []);
 
   if (!mounted || !calendarData) {
@@ -110,24 +116,43 @@ export default function CalendarView() {
         </div>
       </div>
 
-      {/* Month Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredMonths.map(monthData => {
-          const monthEvents = getEventsForMonth(monthData.month, calendarData);
-          return (
-            <MonthCard
-              key={monthData.month}
-              monthData={monthData}
-              promotionalEvents={monthEvents.promotionalEvents}
-            />
-          );
-        })}
-      </div>
-
-      {filteredMonths.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500">No months found matching your search.</p>
+      {/* Show MonthView for single month, MonthCard grid for all months */}
+      {viewMode !== 'all' && filteredMonths.length === 1 ? (
+        <div>
+          {filteredMonths.map(monthData => {
+            const monthEvents = getEventsForMonth(monthData.month, calendarData);
+            return (
+              <MonthView
+                key={monthData.month}
+                monthData={monthData}
+                promotionalEvents={monthEvents.promotionalEvents}
+              />
+            );
+          })}
         </div>
+      ) : (
+        <>
+          {/* Month Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredMonths.map(monthData => {
+              const monthEvents = getEventsForMonth(monthData.month, calendarData);
+              return (
+                <MonthCard
+                  key={monthData.month}
+                  monthData={monthData}
+                  promotionalEvents={monthEvents.promotionalEvents}
+                  onClick={() => setViewMode(monthData.month.toLowerCase())}
+                />
+              );
+            })}
+          </div>
+
+          {filteredMonths.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-500">No months found matching your search.</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
