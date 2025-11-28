@@ -90,6 +90,30 @@ export default function MonthCard({ monthData, promotionalEvents, isCompact = fa
     return event.event.replace(event.date, '').trim() || event.event;
   };
 
+  // Control how the card image is cropped for each month
+  const getCardObjectPosition = (name: string): string => {
+    switch (name) {
+      case 'January':
+        // January card looked better fully centered before
+        return 'center center';
+      case 'May':
+        // May card back to original centered framing
+        return 'center center';
+      case 'August':
+        // August card back to original centered framing
+        return 'center center';
+      case 'September':
+        // September card back to original centered framing
+        return 'center center';
+      case 'December':
+        // December card back to original centered framing
+        return 'center center';
+      default:
+        // Bias upward a bit so faces are more visible
+        return 'center 30%';
+    }
+  };
+
   const handleGenerateCampaigns = async () => {
     console.log('🔵 Button clicked - handleGenerateCampaigns called');
     
@@ -190,13 +214,13 @@ export default function MonthCard({ monthData, promotionalEvents, isCompact = fa
       onClick={onClick}
     >
       {/* Month Image */}
-      <div className="relative h-48 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
+      <div className="relative h-48 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center overflow-hidden">
         {!imageError && imagePath ? (
           <img
             src={imagePath}
             alt={`${monthName} promotional image`}
             className="w-full h-full object-cover"
-            style={{ objectPosition: monthName === 'June' ? 'center 30%' : 'center center' }}
+            style={{ objectPosition: getCardObjectPosition(monthName) }}
             onError={() => setImageError(true)}
             onLoad={() => setImageError(false)}
           />

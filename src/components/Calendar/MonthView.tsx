@@ -27,6 +27,30 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
   const [campaignIdeas, setCampaignIdeas] = useState<CampaignIdea[]>([]);
   const [isEventsListExpanded, setIsEventsListExpanded] = useState(true);
   const [eventFilter, setEventFilter] = useState<'all' | 'highlighted' | 'promotional' | 'daily'>('all');
+
+  // Control how the hero image is cropped for each month
+  const getHeroObjectPosition = (name: string): string => {
+    switch (name) {
+      case 'January':
+        // January looked better fully centered before
+        return 'center center';
+      case 'May':
+        // May should also use the original centered framing
+        return 'center center';
+      case 'August':
+        // August back to original centered framing
+        return 'center center';
+      case 'September':
+        // September back to original centered framing
+        return 'center center';
+      case 'December':
+        // December back to original centered framing
+        return 'center center';
+      default:
+        // Bias upward a bit so faces are more visible
+        return 'center 25%';
+    }
+  };
   
   // Reset image error when month changes
   useEffect(() => {
@@ -67,17 +91,68 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
     return dayA - dayB;
   });
 
-  // Group events by day
-  const eventsByDay = new Map<number, CalendarEvent[]>();
+  /**
+   * For both the calendar grid and the \"All Events\" list we want to avoid
+   * showing the same event twice (for example once as DAILY and once as PROMOTIONAL).
+   * Instead, we group by date + event name and keep a list of types, then
+   * render one row with small colored dots/blocks for each type.
+   */
+  type EventType = CalendarEvent['type'];
+
+  interface CombinedEvent {
+    event: CalendarEvent;
+    types: EventType[];
+  }
+
+  // Group events by day for the calendar grid
+  const eventsByDay = new Map<number, CombinedEvent[]>();
+  // Group events globally (date + name) for the All Events list
+  const combinedEventsMap = new Map<string, CombinedEvent>();
+
   allEvents.forEach(event => {
     const day = parseDayFromDate(event.date);
+    const normalizedName = event.event.toLowerCase().trim();
+
+    // ----- Per-day grouping for calendar grid -----
     if (day) {
       if (!eventsByDay.has(day)) {
         eventsByDay.set(day, []);
       }
-      eventsByDay.get(day)!.push(event);
+
+      const dayEvents = eventsByDay.get(day)!;
+      const existingDay = dayEvents.find(
+        e => e.event.event.toLowerCase().trim() === normalizedName
+      );
+
+      if (existingDay) {
+        if (!existingDay.types.includes(event.type)) {
+          existingDay.types.push(event.type);
+        }
+      } else {
+        dayEvents.push({
+          event,
+          types: [event.type],
+        });
+      }
+    }
+
+    // ----- Global grouping for All Events list (date + name) -----
+    const key = `${event.date}|${normalizedName}`;
+    const existingGlobal = combinedEventsMap.get(key);
+
+    if (existingGlobal) {
+      if (!existingGlobal.types.includes(event.type)) {
+        existingGlobal.types.push(event.type);
+      }
+    } else {
+      combinedEventsMap.set(key, {
+        event,
+        types: [event.type],
+      });
     }
   });
+
+  const combinedEventsList = Array.from(combinedEventsMap.values());
 
   // Extract just the event name (remove date prefix)
   const getEventName = (event: CalendarEvent) => {
@@ -182,12 +257,13 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
     <div className="w-full space-y-6">
       {/* Hero Section with Image and Month Name */}
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-        <div className="relative h-64 sm:h-80 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
+        <div className="relative h-64 sm:h-80 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center overflow-hidden">
           {!imageError ? (
             <img
               src={imagePath}
               alt={`${monthName} promotional image`}
               className="w-full h-full object-cover"
+              style={{ objectPosition: getHeroObjectPosition(monthName) }}
               onError={() => setImageError(true)}
               onLoad={() => setImageError(false)}
             />
@@ -234,9 +310,48 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
         )}
       </div>
 
+      {/* Campaign Ideas Section - placed above Calendar View */}
+      <CampaignSection
+        month={monthName}
+        campaigns={campaignIdeas}
+        isGenerating={isGenerating}
+        onGenerate={handleGenerateCampaigns}
+      />
+
       {/* Calendar Grid - Modern Card Design */}
       <div className="bg-white rounded-2xl shadow-xl p-6">
-        <h3 className="text-2xl font-bold text-gray-900 mb-6">Calendar View</h3>
+        <div className="flex items-center justify-between mb-4 gap-4">
+          <h3 className="text-2xl font-bold text-gray-900">Calendar View</h3>
+
+          {/* Calendar View Legend - matches Event Type Legend styling but with circles */}
+          <div className="hidden sm:block">
+            <div className="px-4 py-2 bg-gray-50 rounded-lg">
+              <h4 className="text-xs font-semibold text-gray-700 mb-2">
+                Event Type Legend:
+              </h4>
+              <div className="flex flex-wrap gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 rounded-full bg-yellow-200 border-2 border-yellow-300"></span>
+                  <span className="text-xs text-gray-700">
+                    <span className="font-semibold">Yellow</span> = Highlighted (major holidays)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 rounded-full bg-green-200 border-2 border-green-300"></span>
+                  <span className="text-xs text-gray-700">
+                    <span className="font-semibold">Green</span> = Promotional (marketing opportunities)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 rounded-full bg-purple-200 border-2 border-purple-300"></span>
+                  <span className="text-xs text-gray-700">
+                    <span className="font-semibold">Purple</span> = Daily (fun/unofficial holidays)
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         <div className="grid grid-cols-7 gap-2 mb-4">
           {/* Day headers */}
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
@@ -252,21 +367,14 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
             }
 
             const dayEvents = eventsByDay.get(day) || [];
-            const hasHighlighted = dayEvents.some(e => e.type === 'highlighted');
-            const hasPromotional = dayEvents.some(e => e.type === 'promotional');
-            
             return (
               <div
                 key={day}
                 className={`
                   min-h-20 sm:min-h-24 p-2 rounded-xl border-2 transition-all duration-200
-                  ${hasHighlighted 
-                    ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-300 shadow-md cursor-pointer hover:shadow-lg' 
-                    : hasPromotional 
-                    ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-300 shadow-md cursor-pointer hover:shadow-lg'
-                    : dayEvents.length > 0
-                    ? 'bg-blue-50 border-blue-200 cursor-pointer hover:shadow-md'
-                    : 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                  ${dayEvents.length > 0
+                    ? 'bg-white border-gray-200 cursor-pointer hover:shadow-md'
+                    : 'bg-white border-gray-200 hover:border-gray-300'
                   }
                 `}
                 onClick={() => {
@@ -280,7 +388,15 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
                   {day}
                 </div>
                 <div className="space-y-1">
-                  {dayEvents.slice(0, 2).map((event, idx) => (
+                  {dayEvents.slice(0, 2).map((combined, idx) => {
+                    const event = combined.event;
+                    const types = combined.types;
+
+                    const isHighlighted = types.includes('highlighted');
+                    const isPromotional = types.includes('promotional');
+                    const isDaily = types.includes('daily');
+
+                    return (
                     <div
                       key={idx}
                       onClick={(e) => {
@@ -289,15 +405,40 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
                       }}
                       className={`
                         text-xs p-1.5 rounded-lg font-medium truncate shadow-sm hover:shadow-md transition-shadow
-                        ${event.type === 'highlighted' ? 'bg-yellow-200 text-yellow-900 hover:bg-yellow-300' : ''}
-                        ${event.type === 'promotional' ? 'bg-green-200 text-green-900 hover:bg-green-300' : ''}
-                        ${event.type === 'daily' ? 'bg-blue-200 text-blue-900 hover:bg-blue-300' : ''}
+                        bg-white/70 border border-gray-200
                       `}
                       title={getEventName(event)}
                     >
-                      {getEventName(event).length > 15 ? getEventName(event).substring(0, 15) + '...' : getEventName(event)}
-                    </div>
-                  ))}
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-gray-800">
+                            {getEventName(event).length > 18
+                              ? getEventName(event).substring(0, 18) + '...'
+                              : getEventName(event)}
+                          </span>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {isHighlighted && (
+                              <span
+                                className="w-2.5 h-2.5 rounded-full bg-yellow-400 border border-yellow-500"
+                                aria-label="Highlighted"
+                              ></span>
+                            )}
+                            {isPromotional && (
+                              <span
+                                className="w-2.5 h-2.5 rounded-full bg-green-400 border border-green-500"
+                                aria-label="Promotional"
+                              ></span>
+                            )}
+                            {isDaily && (
+                              <span
+                                className="w-2.5 h-2.5 rounded-full bg-purple-400 border border-purple-500"
+                                aria-label="Daily"
+                              ></span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                   {dayEvents.length > 2 && (
                     <div 
                       className="text-xs text-gray-500 font-semibold cursor-pointer hover:text-gray-700"
@@ -357,9 +498,9 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-blue-200 border-2 border-blue-300"></div>
+              <div className="w-4 h-4 rounded bg-purple-200 border-2 border-purple-300"></div>
               <span className="text-sm text-gray-700">
-                <span className="font-semibold">Blue</span> = Daily (fun/unofficial holidays)
+                <span className="font-semibold">Purple</span> = Daily (fun/unofficial holidays)
               </span>
             </div>
           </div>
@@ -401,8 +542,8 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
             onClick={() => setEventFilter('daily')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               eventFilter === 'daily'
-                ? 'bg-blue-500 text-white'
-                : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                ? 'bg-purple-500 text-white'
+                : 'bg-purple-100 text-purple-800 hover:bg-purple-200'
             }`}
           >
             Daily
@@ -412,39 +553,64 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
         {/* Events Grid - Collapsible */}
         {isEventsListExpanded && (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {allEvents
-              .filter(event => eventFilter === 'all' || event.type === eventFilter)
-              .map((event, index) => (
-                <div
-                  key={index}
-                  onClick={() => setSelectedEvent(event)}
-                  className={`
-                    p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-lg hover:scale-105 cursor-pointer
-                    ${event.type === 'highlighted' 
-                      ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-300' 
-                      : event.type === 'promotional'
-                      ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-300'
-                      : 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-300'
-                    }
-                  `}
-                >
-                  <div className="flex items-start gap-3">
-                    <span className={`
-                      px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap
-                      ${event.type === 'highlighted' ? 'bg-yellow-200 text-yellow-900' : ''}
-                      ${event.type === 'promotional' ? 'bg-green-200 text-green-900' : ''}
-                      ${event.type === 'daily' ? 'bg-blue-200 text-blue-900' : ''}
-                    `}>
-                      {event.type.toUpperCase()}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-gray-900 text-sm mb-1">{event.date}</div>
-                      <div className="text-gray-700 text-sm">{getEventName(event)}</div>
+            {combinedEventsList
+              .filter(({ types }) => eventFilter === 'all' || types.includes(eventFilter))
+              .map(({ event, types }, index) => {
+                const isHighlighted = types.includes('highlighted');
+                const isPromotional = types.includes('promotional');
+                const isDaily = types.includes('daily');
+
+                return (
+                  <div
+                    key={index}
+                    onClick={() => setSelectedEvent(event)}
+                    className="p-4 rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:shadow-lg hover:scale-105 cursor-pointer"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-gray-900 text-sm mb-1">{event.date}</div>
+                        <div className="text-gray-700 text-sm">
+                          {getEventName(event)}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                        <div className="flex items-center gap-1">
+                          {isHighlighted && (
+                            <span
+                              className="w-3.5 h-3.5 rounded-sm bg-yellow-400 border border-yellow-500"
+                              aria-label="Highlighted"
+                            ></span>
+                          )}
+                          {isPromotional && (
+                            <span
+                              className="w-3.5 h-3.5 rounded-sm bg-green-400 border border-green-500"
+                              aria-label="Promotional"
+                            ></span>
+                          )}
+                          {isDaily && (
+                            <span
+                              className="w-3.5 h-3.5 rounded-sm bg-purple-400 border border-purple-500"
+                              aria-label="Daily"
+                            ></span>
+                          )}
+                        </div>
+                        <span className="text-[10px] uppercase tracking-wide text-gray-500">
+                          {types
+                            .map(t =>
+                              t === 'highlighted'
+                                ? 'Highlight'
+                                : t === 'promotional'
+                                ? 'Promo'
+                                : 'Daily',
+                            )
+                            .join(' • ')}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            {allEvents.filter(event => eventFilter === 'all' || event.type === eventFilter).length === 0 && (
+                );
+              })}
+            {combinedEventsList.filter(({ types }) => eventFilter === 'all' || types.includes(eventFilter)).length === 0 && (
               <div className="col-span-full text-center py-8 text-gray-500">
                 No events found for the selected filter.
               </div>
@@ -452,14 +618,6 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
           </div>
         )}
       </div>
-
-      {/* Campaign Ideas Section */}
-      <CampaignSection
-        month={monthName}
-        campaigns={campaignIdeas}
-        isGenerating={isGenerating}
-        onGenerate={handleGenerateCampaigns}
-      />
 
       {/* Event Detail Modal */}
       {selectedEvent && (
