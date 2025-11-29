@@ -32,15 +32,23 @@ export default function Home() {
         <main className="py-8">
           <CalendarView />
         </main>
-        <footer className="bg-white border-t border-gray-200 mt-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-bold text-gray-900">LEADSFLOW180</div>
-                <div className="text-sm text-gray-600">THE ZEN OF LEAD GEN</div>
+        <footer className="bg-white border-t border-gray-200 mt-3">
+          <div className="max-w-7xl mx-auto px-2 sm:px-3 lg:px-4 py-[0.03125rem]">
+            <div className="flex flex-col items-center gap-[0.03125rem]">
+              <div className="flex items-center justify-center gap-2 flex-wrap">
+                <img 
+                  src="/images/Dr. HOME FIXER LOGO-02.png" 
+                  alt="Dr. Home Fixer Logo" 
+                  className="h-48 max-w-[400px] object-contain"
+                />
+                <img 
+                  src="/images/LeadsFlow180 Logo.png" 
+                  alt="LeadsFlow180 Logo" 
+                  className="h-[33px] max-w-[400px] object-contain"
+                />
               </div>
-              <div className="text-sm text-gray-500">
-                © 2025 Dr. Home Hiker & LeadsFlow180. Powered by promotional excellence.
+              <div className="text-sm text-gray-500 text-center">
+                © 2025 <a href="https://drhomefixer.com/" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-700 underline">Dr. Home Fixer</a> & <a href="https://leadsflow180.com/" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-700 underline">LeadsFlow180</a>. Powered by promotional excellence.
               </div>
             </div>
           </div>

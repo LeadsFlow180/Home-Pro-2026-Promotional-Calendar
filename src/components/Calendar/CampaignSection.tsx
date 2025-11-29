@@ -1,6 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { CalendarEvent } from '@/types/calendar';
+import DoThisForMeForm from './DoThisForMeForm';
 
 interface CampaignIdea {
   title: string;
@@ -17,6 +19,7 @@ interface CampaignSectionProps {
 }
 
 export default function CampaignSection({ month, campaigns, isGenerating, onGenerate }: CampaignSectionProps) {
+  const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null);
   return (
     <div className="bg-white rounded-2xl shadow-xl p-6">
       <div className="flex items-center justify-between mb-6">
@@ -69,7 +72,7 @@ export default function CampaignSection({ month, campaigns, isGenerating, onGene
               </div>
               <p className="text-gray-700 mb-4 leading-relaxed">{campaign.description}</p>
               {campaign.channels && campaign.channels.length > 0 && (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 mb-4">
                   {campaign.channels.map((channel, idx) => (
                     <span
                       key={idx}
@@ -79,6 +82,23 @@ export default function CampaignSection({ month, campaigns, isGenerating, onGene
                     </span>
                   ))}
                 </div>
+              )}
+              {/* Do This For Me Button - 1/4 size */}
+              <div className="flex items-center justify-end mt-3">
+                <button
+                  onClick={() => setExpandedCampaign(expandedCampaign === campaign.title ? null : campaign.title)}
+                  className="bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white font-semibold py-1 px-2 rounded text-xs shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-1"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  Do This For Me
+                </button>
+              </div>
+              
+              {/* Inline Form - expands below the card */}
+              {expandedCampaign === campaign.title && (
+                <DoThisForMeForm campaignTitle={campaign.title} />
               )}
             </div>
           ))}

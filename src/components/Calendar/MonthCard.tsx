@@ -96,6 +96,9 @@ export default function MonthCard({ monthData, promotionalEvents, isCompact = fa
       case 'January':
         // January card looked better fully centered before
         return 'center center';
+      case 'February':
+        // February cats - pushed down a bit further
+        return 'center 47%';
       case 'May':
         // May card back to original centered framing
         return 'center center';
@@ -105,6 +108,9 @@ export default function MonthCard({ monthData, promotionalEvents, isCompact = fa
       case 'September':
         // September card back to original centered framing
         return 'center center';
+      case 'October':
+        // October card - move up to show more of face and hair
+        return 'center 20%';
       case 'December':
         // December card back to original centered framing
         return 'center center';

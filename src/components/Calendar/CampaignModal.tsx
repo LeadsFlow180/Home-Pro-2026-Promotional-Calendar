@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import DoThisForMeForm from './DoThisForMeForm';
 
 interface CampaignIdea {
   title: string;
@@ -18,6 +19,7 @@ interface CampaignModalProps {
 }
 
 export default function CampaignModal({ month, campaigns, isGenerating, onClose }: CampaignModalProps) {
+  const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null);
   console.log('🎨 CampaignModal rendering - month:', month, 'isGenerating:', isGenerating, 'campaigns:', campaigns.length);
   
   // Prevent body scroll when modal is open
@@ -144,7 +146,7 @@ export default function CampaignModal({ month, campaigns, isGenerating, onClose 
                     </div>
                     <p className="text-gray-700 mb-3">{campaign.description}</p>
                     {campaign.channels && campaign.channels.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 mb-3">
                         {campaign.channels.map((channel, idx) => (
                           <span
                             key={idx}
@@ -154,6 +156,23 @@ export default function CampaignModal({ month, campaigns, isGenerating, onClose 
                           </span>
                         ))}
                       </div>
+                    )}
+                    {/* Do This For Me Button - 1/4 size */}
+                    <div className="flex items-center justify-end mt-3">
+                      <button
+                        onClick={() => setExpandedCampaign(expandedCampaign === campaign.title ? null : campaign.title)}
+                        className="bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white font-semibold py-1 px-2 rounded text-xs shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-1"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        Do This For Me
+                      </button>
+                    </div>
+                    
+                    {/* Inline Form - expands below the card */}
+                    {expandedCampaign === campaign.title && (
+                      <DoThisForMeForm campaignTitle={campaign.title} />
                     )}
                   </div>
                 ))}

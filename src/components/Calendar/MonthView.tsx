@@ -34,6 +34,9 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
       case 'January':
         // January looked better fully centered before
         return 'center center';
+      case 'February':
+        // February cats - pushed down a bit further
+        return 'center 42%';
       case 'May':
         // May should also use the original centered framing
         return 'center center';
@@ -43,6 +46,9 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
       case 'September':
         // September back to original centered framing
         return 'center center';
+      case 'October':
+        // October - move up to show more of face and hair
+        return 'center 15%';
       case 'December':
         // December back to original centered framing
         return 'center center';
