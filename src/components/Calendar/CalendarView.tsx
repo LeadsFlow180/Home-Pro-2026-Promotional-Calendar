@@ -14,6 +14,15 @@ export default function CalendarView() {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
+    const handleReset = () => {
+      setViewMode('all');
+      setSearchQuery('');
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resetCalendarView', handleReset);
+    }
+
     setMounted(true);
     try {
       const data = loadCalendarData();
@@ -22,6 +31,12 @@ export default function CalendarView() {
       console.error('Error loading calendar data:', error);
       // Keep calendarData as null to show loading/error state
     }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resetCalendarView', handleReset);
+      }
+    };
   }, []);
 
   if (!mounted || !calendarData) {

@@ -3,7 +3,7 @@ import OpenAI from 'openai';
 
 export async function POST(request: NextRequest) {
   try {
-    const { month, themes, events, highlightedDates } = await request.json();
+    const { month, themes, events, highlightedDates, serviceId, campaignType, selectedEvents } = await request.json();
 
     // Check for API key first - try multiple environment variable names
     const apiKey = process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY;
@@ -32,6 +32,37 @@ export async function POST(request: NextRequest) {
       apiKey: apiKey,
     });
 
+    // Get service name if provided
+    const serviceMap: { [key: string]: string } = {
+      'appliance-repair': 'Appliance Repair',
+      'bathroom-remodeling': 'Bathroom Remodeling',
+      'carpet-cleaning': 'Carpet Cleaning',
+      'carpentry-woodworking': 'Carpentry & Woodworking',
+      'chimneys-fireplaces': 'Chimneys and Fireplaces',
+      'doors': 'Doors',
+      'drywall-installation': 'Drywall Installation',
+      'electrician': 'Electrician',
+      'flooring-tile': 'Flooring & Tile',
+      'garage-door-installation': 'Garage Door Installation',
+      'handyman-service': 'Handyman Service',
+      'home-cleaning': 'Home Cleaning',
+      'hvac': 'HVAC',
+      'kitchen-remodeling': 'Kitchen Remodeling and Renovation',
+      'landscaping-outdoor': 'Landscaping and Outdoor Services',
+      'locksmith': 'Locksmith',
+      'masonry-concrete': 'Masonry and Concrete',
+      'painting-wallpaper': 'Painting and Wallpaper',
+      'pest-control': 'Pest Control',
+      'plumbing': 'Plumbing',
+      'roofing': 'Roofing',
+      'swimming-pool-spa': 'Swimming Pool and Spa Services',
+      'water-mold-restoration': 'Water and Mold Damage Restoration',
+      'window-installation-repair': 'Window Installation and Repair',
+    };
+
+    const serviceName = serviceId ? serviceMap[serviceId] : null;
+    const isEventSpecific = campaignType === 'event-specific' && selectedEvents && selectedEvents.length > 0;
+
     // Build prompt for OpenAI
     const themesList = themes.length > 0 ? themes.join(', ') : 'None specified';
     
@@ -53,28 +84,61 @@ export async function POST(request: NextRequest) {
       })
       .join('; ');
 
-    const prompt = `You are a marketing expert helping small businesses create promotional campaigns. 
+    // Build selected events info for event-specific campaigns
+    let selectedEventsInfo = '';
+    if (isEventSpecific) {
+      selectedEventsInfo = selectedEvents
+        .map((e: any) => {
+          const eventName = e.event.replace(e.date, '').trim() || e.event;
+          return `${e.date}: ${eventName}`;
+        })
+        .join('; ');
+    }
+
+    // Build the service-specific context
+    const serviceContext = serviceName 
+      ? `\n\nIMPORTANT: These campaigns must be specifically tailored for ${serviceName} businesses. Each campaign should:
+- Be highly relevant to ${serviceName} services and customer needs
+- Address common problems or opportunities that ${serviceName.toLowerCase()} businesses face
+- Use industry-specific language and pain points
+- Connect the holiday/event to how it relates to ${serviceName} services
+- Provide actionable ideas that a ${serviceName.toLowerCase()} business owner can immediately implement`
+      : '';
+
+    // Build campaign count and focus
+    const campaignCount = isEventSpecific ? selectedEvents.length : 6;
+    const campaignFocus = isEventSpecific
+      ? `Generate ${campaignCount} creative marketing campaign ideas, one for each of these specific events: ${selectedEventsInfo}. Each campaign must be directly tied to its specific event and ${serviceName ? `tailored for ${serviceName} businesses` : 'suitable for home service businesses'}.`
+      : `Generate ${campaignCount} creative marketing campaign ideas for ${month}. These should be general campaigns that work well throughout the month${serviceName ? ` specifically for ${serviceName} businesses` : ' for home service businesses'}.`;
+
+    const prompt = `You are a master marketing/advertising/lead generator/branding expert helping small businesses create promotional campaigns.
 
 For the month of ${month}, here are the relevant details:
 - Monthly Themes: ${themesList}
 - Key Highlighted Dates: ${keyDatesInfo || 'None specified'}
 - Daily Opportunities: ${dailyEventsInfo || 'None specified'}
+${isEventSpecific ? `- Selected Events for Campaigns: ${selectedEventsInfo}` : ''}
 
-Generate 5 creative marketing campaign ideas specifically tailored for ${month}. Each campaign idea should:
-1. Be specific, actionable, and directly tied to ${month} themes or events
-2. Leverage the monthly themes (${themesList}) or specific dates mentioned above
-3. Include a compelling campaign title, detailed description (2-3 sentences), and suggested marketing channels (e.g., Social Media, Email, In-Store, Website)
-4. Be suitable for small businesses with limited budgets
-5. Be timely and relevant to ${month} specifically
+${campaignFocus}
 
-Focus on campaigns that capitalize on ${month}'s unique characteristics, holidays, and seasonal opportunities.
+Each campaign idea must:
+1. Be innovative, creative, and budget-friendly
+2. Be specific, actionable, and directly tied to ${isEventSpecific ? 'the selected events' : `${month} themes or events`}
+3. ${serviceName ? `Be highly relevant to ${serviceName} businesses and their specific customer needs` : 'Be suitable for home service businesses'}
+4. Include a compelling campaign title, detailed description (2-3 sentences explaining the campaign strategy), and suggested marketing channels (e.g., Social Media, Email, In-Store, Website, Google Ads, Local Partnerships)
+5. Be suitable for small businesses with limited budgets
+6. Focus on generating leads and building brand awareness
+7. ${isEventSpecific ? 'Be tied to the specific event date and name' : `Be timely and relevant to ${month} specifically`}
+${serviceContext}
+
+The ideas should be innovative, creative, and budget-friendly. Think outside the box while keeping campaigns practical and implementable.
 
 Format the response as a JSON array with objects containing: title, description, channels (array), and targetDate (if applicable). Example format:
 [
   {
     "title": "Campaign Title",
-    "description": "Detailed campaign description here",
-    "channels": ["Social Media", "Email"],
+    "description": "Detailed campaign description here (2-3 sentences)",
+    "channels": ["Social Media", "Email", "Website"],
     "targetDate": "Optional specific date"
   }
 ]`;
@@ -85,15 +149,15 @@ Format the response as a JSON array with objects containing: title, description,
       messages: [
         {
           role: 'system',
-          content: 'You are a helpful marketing expert that generates creative, actionable campaign ideas for small businesses. Always respond with valid JSON.',
+          content: 'You are a master marketing/advertising/lead generator/branding expert that generates innovative, creative, and budget-friendly campaign ideas for small businesses. Always respond with valid JSON. Focus on practical, actionable campaigns that generate leads and build brand awareness.',
         },
         {
           role: 'user',
           content: prompt,
         },
       ],
-      temperature: 0.8,
-      max_tokens: 1500,
+      temperature: 0.9,
+      max_tokens: 2000,
     });
     console.log('OpenAI API call successful');
 

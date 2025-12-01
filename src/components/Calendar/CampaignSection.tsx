@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { CalendarEvent } from '@/types/calendar';
 import DoThisForMeForm from './DoThisForMeForm';
+import ServiceSelector, { SERVICES } from './ServiceSelector';
 
 interface CampaignIdea {
   title: string;
@@ -15,11 +16,57 @@ interface CampaignSectionProps {
   month: string;
   campaigns: CampaignIdea[];
   isGenerating: boolean;
-  onGenerate: () => void;
+  events: CalendarEvent[];
+  onGenerate: (serviceId: string | null, campaignType: 'general' | 'event-specific', selectedEvents: CalendarEvent[]) => void;
 }
 
-export default function CampaignSection({ month, campaigns, isGenerating, onGenerate }: CampaignSectionProps) {
+export default function CampaignSection({ month, campaigns, isGenerating, events, onGenerate }: CampaignSectionProps) {
   const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null);
+  const [selectedService, setSelectedService] = useState<string | null>(null);
+  const [campaignType, setCampaignType] = useState<'general' | 'event-specific'>('general');
+  const [selectedEvents, setSelectedEvents] = useState<CalendarEvent[]>([]);
+
+  // Extract event name helper
+  const getEventName = useCallback((event: CalendarEvent) => {
+    const dateMatch = event.date.match(/\d+(st|nd|rd|th)\s*-\s*(.+)/);
+    if (dateMatch) {
+      return dateMatch[2];
+    }
+    return event.event.replace(event.date, '').trim() || event.event;
+  }, []);
+
+  // Deduplicate events by date and event name
+  const uniqueEvents = useMemo(() => {
+    const seen = new Map<string, CalendarEvent>();
+    events.forEach(event => {
+      const eventName = getEventName(event);
+      const key = `${event.date}|${eventName.toLowerCase().trim()}`;
+      if (!seen.has(key)) {
+        seen.set(key, event);
+      }
+    });
+    return Array.from(seen.values());
+  }, [events, getEventName]);
+
+  const handleEventToggle = (event: CalendarEvent) => {
+    const isSelected = selectedEvents.some(e => e.date === event.date && e.event === event.event);
+    if (isSelected) {
+      setSelectedEvents(selectedEvents.filter(e => !(e.date === event.date && e.event === event.event)));
+    } else {
+      if (selectedEvents.length < 4) {
+        setSelectedEvents([...selectedEvents, event]);
+      }
+    }
+  };
+
+  const handleGenerate = () => {
+    if (campaignType === 'event-specific' && selectedEvents.length === 0) {
+      alert('Please select at least one event for event-specific campaigns.');
+      return;
+    }
+    onGenerate(selectedService, campaignType, campaignType === 'event-specific' ? selectedEvents : []);
+  };
+
   return (
     <div className="bg-white rounded-2xl shadow-xl p-6">
       <div className="flex items-center justify-between mb-6">
@@ -28,9 +75,9 @@ export default function CampaignSection({ month, campaigns, isGenerating, onGene
         </h3>
         {campaigns.length === 0 && !isGenerating && (
           <button
-            onClick={onGenerate}
-            disabled={isGenerating}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold rounded-lg transition-colors duration-200 flex items-center gap-2"
+            onClick={handleGenerate}
+            disabled={isGenerating || (campaignType === 'event-specific' && selectedEvents.length === 0)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors duration-200 flex items-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
@@ -39,6 +86,88 @@ export default function CampaignSection({ month, campaigns, isGenerating, onGene
           </button>
         )}
       </div>
+
+      {campaigns.length === 0 && !isGenerating && (
+        <div className="space-y-6 mb-6">
+          {/* Service Selector */}
+          <ServiceSelector
+            selectedService={selectedService}
+            onServiceSelect={setSelectedService}
+          />
+
+          {/* Campaign Type Toggle */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Campaign Type
+            </label>
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  setCampaignType('general');
+                  setSelectedEvents([]);
+                }}
+                className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                  campaignType === 'general'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                6 General Campaigns
+              </button>
+              <button
+                onClick={() => setCampaignType('event-specific')}
+                className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                  campaignType === 'event-specific'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Event-Specific Campaigns
+              </button>
+            </div>
+          </div>
+
+          {/* Event Selection (only for event-specific) */}
+          {campaignType === 'event-specific' && (
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                Select Events (up to 4)
+                {selectedEvents.length > 0 && (
+                  <span className="ml-2 text-blue-600">({selectedEvents.length}/4 selected)</span>
+                )}
+              </label>
+              <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-3 bg-gray-50">
+                {uniqueEvents.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No events available for this month.</p>
+                ) : (
+                  <div className="grid gap-2">
+                    {uniqueEvents.map((event, index) => {
+                      const isSelected = selectedEvents.some(e => e.date === event.date && e.event === event.event);
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => handleEventToggle(event)}
+                          disabled={!isSelected && selectedEvents.length >= 4}
+                          className={`p-3 rounded-lg text-left transition-colors ${
+                            isSelected
+                              ? 'bg-blue-600 text-white shadow-md'
+                              : selectedEvents.length >= 4
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+                          }`}
+                        >
+                          <div className="font-semibold text-sm">{event.date}</div>
+                          <div className="text-sm">{getEventName(event)}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {isGenerating ? (
         <div className="py-12 text-center">

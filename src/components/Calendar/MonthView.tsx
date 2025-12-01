@@ -169,7 +169,11 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
     return event.event.replace(event.date, '').trim() || event.event;
   };
 
-  const handleGenerateCampaigns = async () => {
+  const handleGenerateCampaigns = async (
+    serviceId: string | null,
+    campaignType: 'general' | 'event-specific',
+    selectedEvents: CalendarEvent[]
+  ) => {
     if (isGenerating) return;
 
     setIsGenerating(true);
@@ -192,11 +196,20 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
           type: event.type || 'highlighted',
         }));
 
+      const serializableSelectedEvents = selectedEvents.map(event => ({
+        date: event.date || '',
+        event: event.event || '',
+        type: event.type || 'daily',
+      }));
+
       const requestBody = JSON.stringify({
         month: monthName,
         themes: Array.isArray(monthData.themes) ? monthData.themes : [],
         events: serializableEvents,
         highlightedDates: serializableHighlightedDates,
+        serviceId: serviceId,
+        campaignType: campaignType,
+        selectedEvents: serializableSelectedEvents,
       });
 
       const controller = new AbortController();
@@ -321,6 +334,7 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
         month={monthName}
         campaigns={campaignIdeas}
         isGenerating={isGenerating}
+        events={combinedEventsList.map(combined => combined.event)}
         onGenerate={handleGenerateCampaigns}
       />
 
