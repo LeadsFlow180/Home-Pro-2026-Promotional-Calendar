@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  // Use JWT sessions for simplicity and production compatibility
   providers: [
     CredentialsProvider({
       name: 'credentials',
