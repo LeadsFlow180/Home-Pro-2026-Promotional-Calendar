@@ -5,6 +5,9 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import Link from 'next/link'
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
 export default function SignIn() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

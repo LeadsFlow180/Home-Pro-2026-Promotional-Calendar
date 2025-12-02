@@ -3,6 +3,9 @@
 import { useSession, signIn, signOut } from 'next-auth/react'
 import { useState, useEffect } from 'react'
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
 export default function TestAuth() {
   const { data: session, status } = useSession()
   const [testResult, setTestResult] = useState<string>('')

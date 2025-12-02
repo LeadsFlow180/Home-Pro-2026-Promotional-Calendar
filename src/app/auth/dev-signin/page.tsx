@@ -3,6 +3,9 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
 export default function DevSignIn() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)

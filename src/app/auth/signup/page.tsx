@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import Link from 'next/link'
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
 export default function SignUp() {
   const [formData, setFormData] = useState({
     name: '',
