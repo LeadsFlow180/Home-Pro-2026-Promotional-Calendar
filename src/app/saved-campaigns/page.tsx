@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import DoThisForMeForm from '@/components/Calendar/DoThisForMeForm';
+import { useToast } from '@/components/Toast';
 
 interface SavedCampaign {
   id: string;
@@ -19,6 +20,7 @@ interface SavedCampaign {
 
 export default function SavedCampaignsPage() {
   const { data: session, status } = useSession();
+  const { addToast } = useToast();
   const router = useRouter();
   const [savedCampaigns, setSavedCampaigns] = useState<SavedCampaign[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,10 +76,23 @@ export default function SavedCampaignsPage() {
       }
 
       // Remove the campaign from the local state
+      const deletedCampaign = savedCampaigns.find(c => c.id === campaignId);
       setSavedCampaigns(prev => prev.filter(campaign => campaign.id !== campaignId));
+      
+      addToast({
+        type: 'success',
+        title: 'Campaign Deleted',
+        message: deletedCampaign ? `"${deletedCampaign.title}" has been removed from your collection.` : 'Campaign has been deleted.',
+        duration: 4000
+      });
     } catch (err) {
       console.error('Error deleting campaign:', err);
-      alert('Failed to delete campaign. Please try again.');
+      addToast({
+        type: 'error',
+        title: 'Delete Failed',
+        message: 'Unable to delete campaign. Please try again.',
+        duration: 5000
+      });
     }
   };
 

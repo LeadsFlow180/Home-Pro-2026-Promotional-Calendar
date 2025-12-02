@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSession, signIn } from 'next-auth/react';
 import DoThisForMeForm from './DoThisForMeForm';
+import { useToast } from '@/components/Toast';
 
 interface CampaignIdea {
   title: string;
@@ -22,6 +23,7 @@ interface CampaignModalProps {
 export default function CampaignModal({ month, campaigns, isGenerating, onClose }: CampaignModalProps) {
   const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null);
   const { data: session } = useSession();
+  const { addToast } = useToast();
   const [savingCampaigns, setSavingCampaigns] = useState<Set<string>>(new Set());
   const [savedCampaigns, setSavedCampaigns] = useState<Set<string>>(new Set());
   console.log('🎨 CampaignModal rendering - month:', month, 'isGenerating:', isGenerating, 'campaigns:', campaigns.length);
@@ -83,16 +85,31 @@ export default function CampaignModal({ month, campaigns, isGenerating, onClose 
 
       if (response.ok) {
         setSavedCampaigns(prev => new Set(prev.add(campaignKey)));
-        alert('Campaign saved successfully!');
+        addToast({
+          type: 'success',
+          title: 'Campaign Saved!',
+          message: `"${campaign.title}" has been saved to your collection.`,
+          duration: 4000
+        });
       } else if (response.status === 409) {
-        alert('Campaign is already saved!');
         setSavedCampaigns(prev => new Set(prev.add(campaignKey)));
+        addToast({
+          type: 'info',
+          title: 'Already Saved',
+          message: `"${campaign.title}" is already in your collection.`,
+          duration: 3000
+        });
       } else {
         throw new Error(data.error || 'Failed to save campaign');
       }
     } catch (error) {
       console.error('Error saving campaign:', error);
-      alert('Failed to save campaign. Please try again.');
+      addToast({
+        type: 'error',
+        title: 'Save Failed',
+        message: 'Unable to save campaign. Please try again.',
+        duration: 5000
+      });
     } finally {
       setSavingCampaigns(prev => {
         const newSet = new Set(prev);

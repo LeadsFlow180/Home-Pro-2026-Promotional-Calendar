@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { CalendarEvent } from '@/types/calendar';
 import DoThisForMeForm from './DoThisForMeForm';
 import ServiceSelector, { SERVICES } from './ServiceSelector';
+import { useToast } from '@/components/Toast';
 
 interface CampaignIdea {
   title: string;
@@ -23,6 +24,7 @@ interface CampaignSectionProps {
 
 export default function CampaignSection({ month, campaigns, isGenerating, events, onGenerate }: CampaignSectionProps) {
   const { data: session } = useSession();
+  const { addToast } = useToast();
   const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [campaignType, setCampaignType] = useState<'general' | 'event-specific'>('general');
@@ -79,16 +81,31 @@ export default function CampaignSection({ month, campaigns, isGenerating, events
 
       if (response.ok) {
         setSavedCampaigns(prev => new Set(prev.add(campaignKey)));
-        alert('Campaign saved successfully!');
+        addToast({
+          type: 'success',
+          title: 'Campaign Saved!',
+          message: `"${campaign.title}" has been saved to your collection.`,
+          duration: 4000
+        });
       } else if (response.status === 409) {
-        alert('Campaign is already saved!');
         setSavedCampaigns(prev => new Set(prev.add(campaignKey)));
+        addToast({
+          type: 'info',
+          title: 'Already Saved',
+          message: `"${campaign.title}" is already in your collection.`,
+          duration: 3000
+        });
       } else {
         throw new Error(data.error || 'Failed to save campaign');
       }
     } catch (error) {
       console.error('Error saving campaign:', error);
-      alert('Failed to save campaign. Please try again.');
+      addToast({
+        type: 'error',
+        title: 'Save Failed',
+        message: 'Unable to save campaign. Please try again.',
+        duration: 5000
+      });
     } finally {
       setSavingCampaigns(prev => {
         const newSet = new Set(prev);
