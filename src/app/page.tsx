@@ -2,7 +2,7 @@ import CalendarView from '@/components/Calendar/CalendarView';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import AuthHeader from '@/components/Calendar/AuthHeader';
 
-//Deployment live
+//Deployment 
 export default function Home() {
   return (
     <ErrorBoundary>
