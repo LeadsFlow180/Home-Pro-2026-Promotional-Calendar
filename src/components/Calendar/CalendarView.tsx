@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { loadCalendarData, getEventsForMonth, getAvailableMonths } from '@/lib/utils/calendar-data';
 import MonthCard from './MonthCard';
 import MonthView from './MonthView';
+import UserDashboard from '@/components/UserDashboard';
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -73,6 +74,9 @@ export default function CalendarView() {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* User Dashboard - shown when authenticated */}
+      <UserDashboard />
+      
       {/* Search Bar */}
       <div className="mb-6">
         <div className="relative">

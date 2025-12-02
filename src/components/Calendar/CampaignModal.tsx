@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useSession, signIn } from 'next-auth/react';
 import DoThisForMeForm from './DoThisForMeForm';
 
 interface CampaignIdea {
@@ -20,6 +21,7 @@ interface CampaignModalProps {
 
 export default function CampaignModal({ month, campaigns, isGenerating, onClose }: CampaignModalProps) {
   const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null);
+  const { data: session } = useSession();
   console.log('🎨 CampaignModal rendering - month:', month, 'isGenerating:', isGenerating, 'campaigns:', campaigns.length);
   
   // Prevent body scroll when modal is open
@@ -159,19 +161,31 @@ export default function CampaignModal({ month, campaigns, isGenerating, onClose 
                     )}
                     {/* Do This For Me Button - 1/4 size */}
                     <div className="flex items-center justify-end mt-3">
-                      <button
-                        onClick={() => setExpandedCampaign(expandedCampaign === campaign.title ? null : campaign.title)}
-                        className="bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white font-semibold py-1 px-2 rounded text-xs shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-1"
-                      >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        Do This For Me
-                      </button>
+                      {session ? (
+                        <button
+                          onClick={() => setExpandedCampaign(expandedCampaign === campaign.title ? null : campaign.title)}
+                          className="bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white font-semibold py-1 px-2 rounded text-xs shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-1"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                          Do This For Me
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => window.location.href = '/auth/signin'}
+                          className="bg-gradient-to-r from-gray-400 to-gray-500 hover:from-orange-500 hover:to-pink-500 text-white font-semibold py-1 px-2 rounded text-xs shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-1"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                          </svg>
+                          Sign in to Use
+                        </button>
+                      )}
                     </div>
                     
                     {/* Inline Form - expands below the card */}
-                    {expandedCampaign === campaign.title && (
+                    {session && expandedCampaign === campaign.title && (
                       <DoThisForMeForm campaignTitle={campaign.title} />
                     )}
                   </div>

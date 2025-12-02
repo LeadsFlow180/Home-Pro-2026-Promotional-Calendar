@@ -5,6 +5,7 @@ import { MonthlyData, CalendarEvent } from '@/types/calendar';
 import { parseDayFromDate, formatMonthName, getMonthImagePath } from '@/lib/utils/calendar-data';
 import EventDetailModal from './EventDetailModal';
 import CampaignSection from './CampaignSection';
+import AuthGuard from '@/components/AuthGuard';
 
 interface CampaignIdea {
   title: string;
@@ -330,13 +331,15 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
       </div>
 
       {/* Campaign Ideas Section - placed above Calendar View */}
-      <CampaignSection
-        month={monthName}
-        campaigns={campaignIdeas}
-        isGenerating={isGenerating}
-        events={combinedEventsList.map(combined => combined.event)}
-        onGenerate={handleGenerateCampaigns}
-      />
+      <AuthGuard>
+        <CampaignSection
+          month={monthName}
+          campaigns={campaignIdeas}
+          isGenerating={isGenerating}
+          events={combinedEventsList.map(combined => combined.event)}
+          onGenerate={handleGenerateCampaigns}
+        />
+      </AuthGuard>
 
       {/* Calendar Grid - Modern Card Design */}
       <div className="bg-white rounded-2xl shadow-xl p-6">

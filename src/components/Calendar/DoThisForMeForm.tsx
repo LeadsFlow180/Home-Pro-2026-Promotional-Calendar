@@ -1,19 +1,21 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
+import { useEffect } from "react";
 
 interface DoThisForMeFormProps {
   campaignTitle: string;
 }
 
-export default function DoThisForMeForm({ campaignTitle }: DoThisForMeFormProps) {
+export default function DoThisForMeForm({
+  campaignTitle,
+}: DoThisForMeFormProps) {
   useEffect(() => {
     // Load the form embed script
-    const script = document.createElement('script');
-    script.src = 'https://link.leadsflow180.com/js/form_embed.js';
+    const script = document.createElement("script");
+    script.src = "https://link.leadsflow180.com/js/form_embed.js";
     script.async = true;
     document.body.appendChild(script);
-    
+
     return () => {
       // Remove script on cleanup
       if (document.body.contains(script)) {
@@ -27,14 +29,21 @@ export default function DoThisForMeForm({ campaignTitle }: DoThisForMeFormProps)
       <h5 className="text-sm font-semibold text-gray-700 mb-3">
         Do This For Me - {campaignTitle}
       </h5>
-      <div style={{ width: '100%', height: '857px', borderRadius: '3px', overflow: 'hidden' }}>
+      <div
+        style={{
+          width: "100%",
+          height: "857px",
+          borderRadius: "3px",
+          overflow: "hidden",
+        }}
+      >
         <iframe
           src="https://link.leadsflow180.com/widget/form/5rGk8UynC6zxKpg56QdQ"
           style={{
-            width: '100%',
-            height: '100%',
-            border: 'none',
-            borderRadius: '3px'
+            width: "100%",
+            height: "100%",
+            border: "none",
+            borderRadius: "3px",
           }}
           id="inline-5rGk8UynC6zxKpg56QdQ"
           data-layout="{'id':'INLINE'}"
@@ -54,4 +63,3 @@ export default function DoThisForMeForm({ campaignTitle }: DoThisForMeFormProps)
     </div>
   );
 }
-
