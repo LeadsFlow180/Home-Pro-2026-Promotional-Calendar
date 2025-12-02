@@ -1,12 +1,12 @@
 'use client'
 
 import { useSession, signIn, signOut } from 'next-auth/react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
 
-export default function TestAuth() {
+function TestAuthContent() {
   const { data: session, status } = useSession()
   const [testResult, setTestResult] = useState<string>('')
 
@@ -116,5 +116,20 @@ export default function TestAuth() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function TestAuth() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <TestAuthContent />
+    </Suspense>
   )
 }
