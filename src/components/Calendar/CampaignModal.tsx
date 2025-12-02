@@ -22,6 +22,8 @@ interface CampaignModalProps {
 export default function CampaignModal({ month, campaigns, isGenerating, onClose }: CampaignModalProps) {
   const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null);
   const { data: session } = useSession();
+  const [savingCampaigns, setSavingCampaigns] = useState<Set<string>>(new Set());
+  const [savedCampaigns, setSavedCampaigns] = useState<Set<string>>(new Set());
   console.log('🎨 CampaignModal rendering - month:', month, 'isGenerating:', isGenerating, 'campaigns:', campaigns.length);
   
   // Prevent body scroll when modal is open
@@ -54,6 +56,51 @@ export default function CampaignModal({ month, campaigns, isGenerating, onClose 
       document.removeEventListener('keydown', handleEscape);
     };
   }, [onClose, isGenerating]);
+
+  const saveCampaign = async (campaign: CampaignIdea) => {
+    if (!session) return;
+
+    const campaignKey = campaign.title;
+    setSavingCampaigns(prev => new Set(prev.add(campaignKey)));
+
+    try {
+      const response = await fetch('/api/saved-campaigns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: campaign.title,
+          description: campaign.description,
+          category: campaign.category || '',
+          month: month,
+          day: 1,
+          year: new Date().getFullYear()
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSavedCampaigns(prev => new Set(prev.add(campaignKey)));
+        alert('Campaign saved successfully!');
+      } else if (response.status === 409) {
+        alert('Campaign is already saved!');
+        setSavedCampaigns(prev => new Set(prev.add(campaignKey)));
+      } else {
+        throw new Error(data.error || 'Failed to save campaign');
+      }
+    } catch (error) {
+      console.error('Error saving campaign:', error);
+      alert('Failed to save campaign. Please try again.');
+    } finally {
+      setSavingCampaigns(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(campaignKey);
+        return newSet;
+      });
+    }
+  };
 
   // Only render portal on client side
   if (typeof window === 'undefined') {
@@ -159,18 +206,50 @@ export default function CampaignModal({ month, campaigns, isGenerating, onClose 
                         ))}
                       </div>
                     )}
-                    {/* Do This For Me Button - 1/4 size */}
-                    <div className="flex items-center justify-end mt-3">
+                    {/* Action Buttons */}
+                    <div className="flex items-center justify-end gap-2 mt-3">
                       {session ? (
-                        <button
-                          onClick={() => setExpandedCampaign(expandedCampaign === campaign.title ? null : campaign.title)}
-                          className="bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white font-semibold py-1 px-2 rounded text-xs shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-1"
-                        >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                          </svg>
-                          Do This For Me
-                        </button>
+                        <>
+                          <button
+                            onClick={() => saveCampaign(campaign)}
+                            disabled={savingCampaigns.has(campaign.title)}
+                            className={`${
+                              savedCampaigns.has(campaign.title)
+                                ? 'bg-green-500 hover:bg-green-600'
+                                : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
+                            } text-white font-semibold py-1 px-2 rounded text-xs shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed`}
+                          >
+                            {savingCampaigns.has(campaign.title) ? (
+                              <>
+                                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                Saving...
+                              </>
+                            ) : savedCampaigns.has(campaign.title) ? (
+                              <>
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                Saved
+                              </>
+                            ) : (
+                              <>
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                Save
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => setExpandedCampaign(expandedCampaign === campaign.title ? null : campaign.title)}
+                            className="bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white font-semibold py-1 px-2 rounded text-xs shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-1"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            Do This For Me
+                          </button>
+                        </>
                       ) : (
                         <button
                           onClick={() => window.location.href = '/auth/signin'}

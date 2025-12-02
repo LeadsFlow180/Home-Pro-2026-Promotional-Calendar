@@ -47,8 +47,25 @@ model User {
   updatedAt     DateTime  @updatedAt @map("updated_at")
   accounts      Account[]
   sessions      Session[]
+  savedCampaigns SavedCampaign[]
 
   @@map("users")
+}
+
+model SavedCampaign {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  title       String
+  description String?
+  category    String?
+  month       String
+  day         Int
+  year        Int
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("saved_campaigns")
 }
 
 model VerificationToken {
