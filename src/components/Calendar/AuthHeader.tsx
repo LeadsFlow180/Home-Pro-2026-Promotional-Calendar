@@ -42,8 +42,10 @@ export default function AuthHeader() {
                 2026 Promotional Calendar
               </h1>
               <p className="text-blue-100 text-sm sm:text-base mt-1">
-                Plan your marketing campaigns with confidence. Discover the best
-                promotional opportunities throughout the year.
+                Plan your marketing campaigns with confidence.
+              </p>
+              <p className="text-blue-100 text-sm sm:text-base">
+                Discover the best promotional opportunities throughout the year.
               </p>
             </div>
           </HeaderHomeLink>
