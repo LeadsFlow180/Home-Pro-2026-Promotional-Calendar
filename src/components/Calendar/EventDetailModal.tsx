@@ -1,176 +1,227 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { CalendarEvent } from '@/types/calendar';
-import eventDescriptions from '@/data/event-descriptions.json';
+import { useEffect } from "react";
+import { createPortal } from "react-dom";
+import { CalendarEvent } from "@/types/calendar";
+import eventDescriptions from "@/data/event-descriptions.json";
 
 interface EventDetailModalProps {
   event: CalendarEvent | null;
   onClose: () => void;
 }
 
-export default function EventDetailModal({ event, onClose }: EventDetailModalProps) {
+export default function EventDetailModal({
+  event,
+  onClose,
+}: EventDetailModalProps) {
   useEffect(() => {
     if (!event) return;
-    
+
     const originalOverflow = document.body.style.overflow;
     const originalPaddingRight = document.body.style.paddingRight;
-    
-    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-    
-    document.body.style.overflow = 'hidden';
+
+    const scrollbarWidth =
+      window.innerWidth - document.documentElement.clientWidth;
+
+    document.body.style.overflow = "hidden";
     if (scrollbarWidth > 0) {
       document.body.style.paddingRight = `${scrollbarWidth}px`;
     }
-    
+
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         onClose();
       }
     };
-    
-    document.addEventListener('keydown', handleEscape);
-    
+
+    document.addEventListener("keydown", handleEscape);
+
     return () => {
       document.body.style.overflow = originalOverflow;
       document.body.style.paddingRight = originalPaddingRight;
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener("keydown", handleEscape);
     };
   }, [event, onClose]);
 
   if (!event) return null;
 
-  if (typeof window === 'undefined' || !document.body) {
+  if (typeof window === "undefined" || !document.body) {
     return null;
   }
 
   // Extract event name from the event string
   const getEventName = (event: CalendarEvent): string => {
+    // Ensure event.event is a string before using match
+    if (!event || !event.event || typeof event.event !== "string") {
+      return "";
+    }
+
     const dateMatch = event.event.match(/\d+(st|nd|rd|th)\s*-\s*(.+)/);
     if (dateMatch) {
       return dateMatch[2].trim();
     }
     // Try to extract just the event name without date
-    const parts = event.event.split('-');
+    const parts = event.event.split("-");
     if (parts.length > 1) {
-      return parts.slice(1).join('-').trim();
+      return parts.slice(1).join("-").trim();
     }
-    return event.event.replace(event.date, '').trim() || event.event;
+    return event.event.replace(event.date, "").trim() || event.event;
   };
 
+  // Additional safety check - ensure event has required properties
+  if (!event || !event.event || !event.date) {
+    return null;
+  }
+
   const eventName = getEventName(event);
-  
+
   // Try to find matching description - check various keys
   const findEventDescription = (name: string) => {
     // Try exact match first
     if (eventDescriptions[name as keyof typeof eventDescriptions]) {
       return eventDescriptions[name as keyof typeof eventDescriptions];
     }
-    
+
     // Try partial matches
     for (const key in eventDescriptions) {
-      if (name.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(name.toLowerCase())) {
+      if (
+        name.toLowerCase().includes(key.toLowerCase()) ||
+        key.toLowerCase().includes(name.toLowerCase())
+      ) {
         return eventDescriptions[key as keyof typeof eventDescriptions];
       }
     }
-    
+
     // Try matching by removing common suffixes/prefixes
-    const normalizedName = name.toLowerCase().replace(/\s*(day|month|week)\s*$/i, '').trim();
+    const normalizedName = name
+      .toLowerCase()
+      .replace(/\s*(day|month|week)\s*$/i, "")
+      .trim();
     for (const key in eventDescriptions) {
-      const normalizedKey = key.toLowerCase().replace(/\s*(day|month|week)\s*$/i, '').trim();
+      const normalizedKey = key
+        .toLowerCase()
+        .replace(/\s*(day|month|week)\s*$/i, "")
+        .trim();
       if (normalizedName === normalizedKey) {
         return eventDescriptions[key as keyof typeof eventDescriptions];
       }
     }
-    
+
     return null;
   };
 
   const description = findEventDescription(eventName);
 
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   const modalContent = (
-    <div 
-      className="fixed inset-0 overflow-y-auto z-50" 
-      aria-labelledby="modal-title" 
-      role="dialog" 
+    <div
+      className="fixed inset-0 overflow-y-auto z-50"
+      aria-labelledby="modal-title"
+      role="dialog"
       aria-modal="true"
-      style={{ 
-        backgroundColor: 'rgba(0, 0, 0, 0.5)'
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
+      onClick={handleBackdropClick}
+      style={{
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
       }}
     >
-      <div className="relative w-full max-w-2xl mx-auto my-8 px-4">
-        <div 
-          className="bg-white rounded-lg shadow-xl overflow-hidden"
+      <div className="flex min-h-full items-center justify-center p-4">
+        <div
+          className="bg-white rounded-lg shadow-xl overflow-hidden w-full max-w-2xl"
           onClick={(e) => e.stopPropagation()}
           style={{
-            maxHeight: '90vh',
-            overflowY: 'auto'
+            maxHeight: "90vh",
+            overflowY: "auto",
           }}
         >
           <div className="px-6 pt-6 pb-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-2xl font-bold text-gray-900">
-                {eventName}
-              </h3>
+              <h3 className="text-2xl font-bold text-gray-900">{eventName}</h3>
               <button
                 onClick={onClose}
                 className="text-gray-400 hover:text-gray-500 transition-colors"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
 
             <div className="mb-4">
-              <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                event.type === 'highlighted' 
-                  ? 'bg-yellow-100 text-yellow-800' 
-                  : event.type === 'promotional'
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-blue-100 text-blue-800'
-              }`}>
+              <span
+                className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                  event.type === "highlighted"
+                    ? "bg-yellow-100 text-yellow-800"
+                    : event.type === "promotional"
+                    ? "bg-green-100 text-green-800"
+                    : "bg-blue-100 text-blue-800"
+                }`}
+              >
                 {event.type.toUpperCase()}
               </span>
-              <span className="ml-3 text-gray-600 font-medium">{event.date}</span>
+              <span className="ml-3 text-gray-600 font-medium">
+                {event.date}
+              </span>
             </div>
 
             {description ? (
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-2">About</h4>
-                  <p className="text-gray-700 leading-relaxed">{description.description}</p>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                    About
+                  </h4>
+                  <p className="text-gray-700 leading-relaxed">
+                    {description.description}
+                  </p>
                 </div>
 
                 {description.origin && (
                   <div>
-                    <h4 className="text-lg font-semibold text-gray-900 mb-2">History & Origin</h4>
-                    <p className="text-gray-700 leading-relaxed">{description.origin}</p>
+                    <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                      History & Origin
+                    </h4>
+                    <p className="text-gray-700 leading-relaxed">
+                      {description.origin}
+                    </p>
                   </div>
                 )}
 
-                {description.marketingTips && description.marketingTips.length > 0 && (
-                  <div>
-                    <h4 className="text-lg font-semibold text-gray-900 mb-2">Marketing Ideas</h4>
-                    <ul className="list-disc list-inside space-y-1 text-gray-700">
-                      {description.marketingTips.map((tip, index) => (
-                        <li key={index}>{tip}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                {description.marketingTips &&
+                  description.marketingTips.length > 0 && (
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                        Marketing Ideas
+                      </h4>
+                      <ul className="list-disc list-inside space-y-1 text-gray-700">
+                        {description.marketingTips.map((tip, index) => (
+                          <li key={index}>{tip}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
               </div>
             ) : (
               <div className="py-8 text-center">
-                <p className="text-gray-600 mb-2">Information about this event is coming soon!</p>
+                <p className="text-gray-600 mb-2">
+                  Information about this event is coming soon!
+                </p>
                 <p className="text-sm text-gray-500">
-                  We're working on adding detailed information about "{eventName}" and how it came about.
+                  We're working on adding detailed information about "
+                  {eventName}" and how it came about.
                 </p>
               </div>
             )}
@@ -192,4 +243,3 @@ export default function EventDetailModal({ event, onClose }: EventDetailModalPro
 
   return createPortal(modalContent, document.body);
 }
-

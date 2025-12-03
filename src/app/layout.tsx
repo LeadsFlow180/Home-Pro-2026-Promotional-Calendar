@@ -15,8 +15,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Promotional Calendar 2026 - Marketing Opportunities for Small Businesses",
-  description: "Find the best times to create marketing promotions for your small business with our comprehensive promotional calendar",
+  title:
+    "Promotional Calendar 2026 - Marketing Opportunities for Small Businesses",
+  description:
+    "Find the best times to create marketing promotions for your small business with our comprehensive promotional calendar",
 };
 
 export default function RootLayout({
@@ -52,7 +54,8 @@ export default function RootLayout({
                       Turn Your Marketing Calendar into Booked Jobs
                     </p>
                     <p className="hidden sm:block text-xs sm:text-sm text-white/90 mt-1">
-                      LeadsPower Pro runs your marketing, AI follow-up, and scheduling so no lead slips through.
+                      LeadsPower Pro runs your marketing, AI follow-up, and
+                      scheduling so no lead slips through.
                     </p>
                   </div>
                 </div>
@@ -67,9 +70,7 @@ export default function RootLayout({
         </div>
 
         <ToastProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          <AuthProvider>{children}</AuthProvider>
         </ToastProvider>
       </body>
     </html>

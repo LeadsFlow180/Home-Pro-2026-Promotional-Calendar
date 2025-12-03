@@ -1,11 +1,15 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { MonthlyData, CalendarEvent } from '@/types/calendar';
-import { parseDayFromDate, formatMonthName, getMonthImagePath } from '@/lib/utils/calendar-data';
-import EventDetailModal from './EventDetailModal';
-import CampaignSection from './CampaignSection';
-import AuthGuard from '@/components/AuthGuard';
+import { useState, useEffect } from "react";
+import { MonthlyData, CalendarEvent } from "@/types/calendar";
+import {
+  parseDayFromDate,
+  formatMonthName,
+  getMonthImagePath,
+} from "@/lib/utils/calendar-data";
+import EventDetailModal from "./EventDetailModal";
+import CampaignSection from "./CampaignSection";
+import AuthGuard from "@/components/AuthGuard";
 
 interface CampaignIdea {
   title: string;
@@ -19,46 +23,53 @@ interface MonthViewProps {
   promotionalEvents: CalendarEvent[];
 }
 
-export default function MonthView({ monthData, promotionalEvents }: MonthViewProps) {
+export default function MonthView({
+  monthData,
+  promotionalEvents,
+}: MonthViewProps) {
   const monthName = formatMonthName(monthData.month);
   const imagePath = monthData.imagePath || getMonthImagePath(monthData.month);
   const [imageError, setImageError] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
+    null
+  );
   const [isGenerating, setIsGenerating] = useState(false);
   const [campaignIdeas, setCampaignIdeas] = useState<CampaignIdea[]>([]);
   const [isEventsListExpanded, setIsEventsListExpanded] = useState(true);
-  const [eventFilter, setEventFilter] = useState<'all' | 'highlighted' | 'promotional' | 'daily'>('all');
+  const [eventFilter, setEventFilter] = useState<
+    "all" | "highlighted" | "promotional" | "daily"
+  >("all");
 
   // Control how the hero image is cropped for each month
   const getHeroObjectPosition = (name: string): string => {
     switch (name) {
-      case 'January':
+      case "January":
         // January looked better fully centered before
-        return 'center center';
-      case 'February':
+        return "center center";
+      case "February":
         // February cats - pushed down a bit further
-        return 'center 42%';
-      case 'May':
+        return "center 42%";
+      case "May":
         // May should also use the original centered framing
-        return 'center center';
-      case 'August':
+        return "center center";
+      case "August":
         // August back to original centered framing
-        return 'center center';
-      case 'September':
+        return "center center";
+      case "September":
         // September back to original centered framing
-        return 'center center';
-      case 'October':
+        return "center center";
+      case "October":
         // October - move up to show more of face and hair
-        return 'center 15%';
-      case 'December':
+        return "center 15%";
+      case "December":
         // December back to original centered framing
-        return 'center center';
+        return "center center";
       default:
         // Bias upward a bit so faces are more visible
-        return 'center 25%';
+        return "center 25%";
     }
   };
-  
+
   // Reset image error when month changes
   useEffect(() => {
     setImageError(false);
@@ -68,8 +79,20 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
 
   // Get month index (0-11) for date calculations
   const getMonthIndex = (monthName: string): number => {
-    const months = ['january', 'february', 'march', 'april', 'may', 'june', 
-                   'july', 'august', 'september', 'october', 'november', 'december'];
+    const months = [
+      "january",
+      "february",
+      "march",
+      "april",
+      "may",
+      "june",
+      "july",
+      "august",
+      "september",
+      "october",
+      "november",
+      "december",
+    ];
     return months.indexOf(monthName.toLowerCase());
   };
 
@@ -81,12 +104,12 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
     const lastDay = new Date(year, monthIndex + 1, 0);
     const daysInMonth = lastDay.getDate();
     const startingDayOfWeek = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    
+
     return { daysInMonth, startingDayOfWeek };
   };
 
   const { daysInMonth, startingDayOfWeek } = getCalendarDays();
-  
+
   // Combine all events and sort by day
   const allEvents = [
     ...monthData.highlightedDates,
@@ -104,7 +127,7 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
    * Instead, we group by date + event name and keep a list of types, then
    * render one row with small colored dots/blocks for each type.
    */
-  type EventType = CalendarEvent['type'];
+  type EventType = CalendarEvent["type"];
 
   interface CombinedEvent {
     event: CalendarEvent;
@@ -116,7 +139,7 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
   // Group events globally (date + name) for the All Events list
   const combinedEventsMap = new Map<string, CombinedEvent>();
 
-  allEvents.forEach(event => {
+  allEvents.forEach((event) => {
     const day = parseDayFromDate(event.date);
     const normalizedName = event.event.toLowerCase().trim();
 
@@ -128,7 +151,7 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
 
       const dayEvents = eventsByDay.get(day)!;
       const existingDay = dayEvents.find(
-        e => e.event.event.toLowerCase().trim() === normalizedName
+        (e) => e.event.event.toLowerCase().trim() === normalizedName
       );
 
       if (existingDay) {
@@ -167,40 +190,40 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
     if (dateMatch) {
       return dateMatch[2];
     }
-    return event.event.replace(event.date, '').trim() || event.event;
+    return event.event.replace(event.date, "").trim() || event.event;
   };
 
   const handleGenerateCampaigns = async (
     serviceId: string | null,
-    campaignType: 'general' | 'event-specific',
+    campaignType: "general" | "event-specific",
     selectedEvents: CalendarEvent[]
   ) => {
     if (isGenerating) return;
 
     setIsGenerating(true);
     setCampaignIdeas([]);
-    
+
     try {
       const serializableEvents = allEvents
-        .filter(e => e.type === 'daily' || e.type === 'promotional')
-        .map(event => ({
-          date: event.date || '',
-          event: event.event || '',
-          type: event.type || 'daily',
+        .filter((e) => e.type === "daily" || e.type === "promotional")
+        .map((event) => ({
+          date: event.date || "",
+          event: event.event || "",
+          type: event.type || "daily",
         }));
 
       const serializableHighlightedDates = allEvents
-        .filter(e => e.type === 'highlighted')
-        .map(event => ({
-          date: event.date || '',
-          event: event.event || '',
-          type: event.type || 'highlighted',
+        .filter((e) => e.type === "highlighted")
+        .map((event) => ({
+          date: event.date || "",
+          event: event.event || "",
+          type: event.type || "highlighted",
         }));
 
-      const serializableSelectedEvents = selectedEvents.map(event => ({
-        date: event.date || '',
-        event: event.event || '',
-        type: event.type || 'daily',
+      const serializableSelectedEvents = selectedEvents.map((event) => ({
+        date: event.date || "",
+        event: event.event || "",
+        type: event.type || "daily",
       }));
 
       const requestBody = JSON.stringify({
@@ -215,11 +238,11 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000);
-      
-      const response = await fetch('/api/generate-campaign', {
-        method: 'POST',
+
+      const response = await fetch("/api/generate-campaign", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: requestBody,
         signal: controller.signal,
@@ -234,31 +257,38 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
         } catch {
           // If response isn't JSON, use status text
         }
-        throw new Error(errorData.error || `Failed to generate campaigns: ${response.status} ${response.statusText}`);
+        throw new Error(
+          errorData.error ||
+            `Failed to generate campaigns: ${response.status} ${response.statusText}`
+        );
       }
 
       const data = await response.json();
       if (data && Array.isArray(data.campaigns)) {
         setCampaignIdeas(data.campaigns);
       } else {
-        throw new Error('Invalid response format from server');
+        throw new Error("Invalid response format from server");
       }
     } catch (error: any) {
-      console.error('Error generating campaigns:', error);
-      
-      let errorMessage = 'Failed to generate campaign ideas. Please check your OpenAI API key configuration and try again.';
-      
-      if (error.name === 'AbortError') {
-        errorMessage = 'Request timed out. The AI is taking too long to respond. Please try again.';
+      console.error("Error generating campaigns:", error);
+
+      let errorMessage =
+        "Failed to generate campaign ideas. Please check your OpenAI API key configuration and try again.";
+
+      if (error.name === "AbortError") {
+        errorMessage =
+          "Request timed out. The AI is taking too long to respond. Please try again.";
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
-      setCampaignIdeas([{
-        title: 'Error',
-        description: errorMessage,
-        channels: [],
-      }]);
+
+      setCampaignIdeas([
+        {
+          title: "Error",
+          description: errorMessage,
+          channels: [],
+        },
+      ]);
     } finally {
       setIsGenerating(false);
     }
@@ -290,23 +320,45 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
           ) : (
             <div className="flex items-center justify-center h-full">
               <div className="text-center text-white/80">
-                <svg className="w-20 h-20 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                <svg
+                  className="w-20 h-20 mx-auto mb-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  ></path>
                 </svg>
                 <p className="text-lg font-semibold">{monthName}</p>
               </div>
             </div>
           )}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-6">
-            <h2 className="text-4xl sm:text-5xl font-bold text-white">{monthName}</h2>
+            <h2 className="text-4xl sm:text-5xl font-bold text-white">
+              {monthName}
+            </h2>
           </div>
         </div>
-        
+
         {/* Export & Share Button */}
         <div className="p-6 border-t border-gray-100 flex justify-end">
           <button className="text-sm text-gray-600 hover:text-gray-900 font-medium px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+              />
             </svg>
             Export & Share
           </button>
@@ -315,7 +367,9 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
         {/* Monthly Themes */}
         {monthData.themes.length > 0 && (
           <div className="px-6 pb-6 border-t border-gray-100">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3 pt-6">Monthly Themes</h3>
+            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3 pt-6">
+              Monthly Themes
+            </h3>
             <div className="flex flex-wrap gap-2">
               {monthData.themes.map((theme, index) => (
                 <span
@@ -331,13 +385,14 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
       </div>
 
       {/* Campaign Ideas Section - placed above Calendar View */}
-      <AuthGuard>
+      <AuthGuard month={monthName}>
         <CampaignSection
           month={monthName}
           campaigns={campaignIdeas}
           isGenerating={isGenerating}
-          events={combinedEventsList.map(combined => combined.event)}
+          events={combinedEventsList.map((combined) => combined.event)}
           onGenerate={handleGenerateCampaigns}
+          isMonthSpecific={true}
         />
       </AuthGuard>
 
@@ -356,19 +411,22 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
                 <div className="flex items-center gap-2">
                   <span className="w-3.5 h-3.5 rounded-full bg-yellow-200 border-2 border-yellow-300"></span>
                   <span className="text-xs text-gray-700">
-                    <span className="font-semibold">Yellow</span> = Highlighted (major holidays)
+                    <span className="font-semibold">Yellow</span> = Highlighted
+                    (major holidays)
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-3.5 h-3.5 rounded-full bg-green-200 border-2 border-green-300"></span>
                   <span className="text-xs text-gray-700">
-                    <span className="font-semibold">Green</span> = Promotional (marketing opportunities)
+                    <span className="font-semibold">Green</span> = Promotional
+                    (marketing opportunities)
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-3.5 h-3.5 rounded-full bg-purple-200 border-2 border-purple-300"></span>
                   <span className="text-xs text-gray-700">
-                    <span className="font-semibold">Purple</span> = Daily (fun/unofficial holidays)
+                    <span className="font-semibold">Purple</span> = Daily
+                    (fun/unofficial holidays)
                   </span>
                 </div>
               </div>
@@ -377,8 +435,11 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
         </div>
         <div className="grid grid-cols-7 gap-2 mb-4">
           {/* Day headers */}
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-            <div key={day} className="text-center font-bold text-gray-500 text-xs sm:text-sm py-2">
+          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+            <div
+              key={day}
+              className="text-center font-bold text-gray-500 text-xs sm:text-sm py-2"
+            >
               {day}
             </div>
           ))}
@@ -386,7 +447,12 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
           {/* Calendar days */}
           {calendarDays.map((day, index) => {
             if (day === null) {
-              return <div key={`empty-${index}`} className="min-h-20 sm:min-h-24"></div>;
+              return (
+                <div
+                  key={`empty-${index}`}
+                  className="min-h-20 sm:min-h-24"
+                ></div>
+              );
             }
 
             const dayEvents = eventsByDay.get(day) || [];
@@ -395,9 +461,10 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
                 key={day}
                 className={`
                   min-h-20 sm:min-h-24 p-2 rounded-xl border-2 transition-all duration-200
-                  ${dayEvents.length > 0
-                    ? 'bg-white border-gray-200 cursor-pointer hover:shadow-md'
-                    : 'bg-white border-gray-200 hover:border-gray-300'
+                  ${
+                    dayEvents.length > 0
+                      ? "bg-white border-gray-200 cursor-pointer hover:shadow-md"
+                      : "bg-white border-gray-200 hover:border-gray-300"
                   }
                 `}
                 onClick={() => {
@@ -407,7 +474,11 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
                   }
                 }}
               >
-                <div className={`font-bold text-sm mb-1 ${dayEvents.length > 0 ? 'text-gray-900' : 'text-gray-500'}`}>
+                <div
+                  className={`font-bold text-sm mb-1 ${
+                    dayEvents.length > 0 ? "text-gray-900" : "text-gray-500"
+                  }`}
+                >
                   {day}
                 </div>
                 <div className="space-y-1">
@@ -415,27 +486,27 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
                     const event = combined.event;
                     const types = combined.types;
 
-                    const isHighlighted = types.includes('highlighted');
-                    const isPromotional = types.includes('promotional');
-                    const isDaily = types.includes('daily');
+                    const isHighlighted = types.includes("highlighted");
+                    const isPromotional = types.includes("promotional");
+                    const isDaily = types.includes("daily");
 
                     return (
-                    <div
-                      key={idx}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedEvent(event);
-                      }}
-                      className={`
+                      <div
+                        key={idx}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedEvent(event);
+                        }}
+                        className={`
                         text-xs p-1.5 rounded-lg font-medium truncate shadow-sm hover:shadow-md transition-shadow
                         bg-white/70 border border-gray-200
                       `}
-                      title={getEventName(event)}
-                    >
+                        title={getEventName(event)}
+                      >
                         <div className="flex items-center justify-between gap-2">
                           <span className="truncate text-gray-800">
                             {getEventName(event).length > 18
-                              ? getEventName(event).substring(0, 18) + '...'
+                              ? getEventName(event).substring(0, 18) + "..."
                               : getEventName(event)}
                           </span>
                           <div className="flex items-center gap-1 flex-shrink-0">
@@ -463,7 +534,7 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
                     );
                   })}
                   {dayEvents.length > 2 && (
-                    <div 
+                    <div
                       className="text-xs text-gray-500 font-semibold cursor-pointer hover:text-gray-700"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -485,45 +556,59 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
       {/* Event List - Card Design */}
       <div className="bg-white rounded-2xl shadow-xl p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-2xl font-bold text-gray-900">All Events for {monthName}</h3>
+          <h3 className="text-2xl font-bold text-gray-900">
+            All Events for {monthName}
+          </h3>
           <button
             onClick={() => setIsEventsListExpanded(!isEventsListExpanded)}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
             <span className="text-sm font-medium">
-              {isEventsListExpanded ? 'Collapse' : 'Expand'}
+              {isEventsListExpanded ? "Collapse" : "Expand"}
             </span>
-            <svg 
-              className={`w-5 h-5 transition-transform ${isEventsListExpanded ? 'rotate-180' : ''}`}
-              fill="none" 
-              stroke="currentColor" 
+            <svg
+              className={`w-5 h-5 transition-transform ${
+                isEventsListExpanded ? "rotate-180" : ""
+              }`}
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </button>
         </div>
 
         {/* Legend */}
         <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-          <h4 className="text-sm font-semibold text-gray-700 mb-3">Event Type Legend:</h4>
+          <h4 className="text-sm font-semibold text-gray-700 mb-3">
+            Event Type Legend:
+          </h4>
           <div className="flex flex-wrap gap-4">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded bg-yellow-200 border-2 border-yellow-300"></div>
               <span className="text-sm text-gray-700">
-                <span className="font-semibold">Yellow</span> = Highlighted (major holidays)
+                <span className="font-semibold">Yellow</span> = Highlighted
+                (major holidays)
               </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded bg-green-200 border-2 border-green-300"></div>
               <span className="text-sm text-gray-700">
-                <span className="font-semibold">Green</span> = Promotional (marketing opportunities)
+                <span className="font-semibold">Green</span> = Promotional
+                (marketing opportunities)
               </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded bg-purple-200 border-2 border-purple-300"></div>
               <span className="text-sm text-gray-700">
-                <span className="font-semibold">Purple</span> = Daily (fun/unofficial holidays)
+                <span className="font-semibold">Purple</span> = Daily
+                (fun/unofficial holidays)
               </span>
             </div>
           </div>
@@ -532,41 +617,41 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
         {/* Filters */}
         <div className="mb-4 flex flex-wrap gap-2">
           <button
-            onClick={() => setEventFilter('all')}
+            onClick={() => setEventFilter("all")}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              eventFilter === 'all'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              eventFilter === "all"
+                ? "bg-blue-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
             All Events
           </button>
           <button
-            onClick={() => setEventFilter('highlighted')}
+            onClick={() => setEventFilter("highlighted")}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              eventFilter === 'highlighted'
-                ? 'bg-yellow-500 text-white'
-                : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+              eventFilter === "highlighted"
+                ? "bg-yellow-500 text-white"
+                : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
             }`}
           >
             Highlighted
           </button>
           <button
-            onClick={() => setEventFilter('promotional')}
+            onClick={() => setEventFilter("promotional")}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              eventFilter === 'promotional'
-                ? 'bg-green-500 text-white'
-                : 'bg-green-100 text-green-800 hover:bg-green-200'
+              eventFilter === "promotional"
+                ? "bg-green-500 text-white"
+                : "bg-green-100 text-green-800 hover:bg-green-200"
             }`}
           >
             Promotional
           </button>
           <button
-            onClick={() => setEventFilter('daily')}
+            onClick={() => setEventFilter("daily")}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              eventFilter === 'daily'
-                ? 'bg-purple-500 text-white'
-                : 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+              eventFilter === "daily"
+                ? "bg-purple-500 text-white"
+                : "bg-purple-100 text-purple-800 hover:bg-purple-200"
             }`}
           >
             Daily
@@ -577,11 +662,14 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
         {isEventsListExpanded && (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {combinedEventsList
-              .filter(({ types }) => eventFilter === 'all' || types.includes(eventFilter))
+              .filter(
+                ({ types }) =>
+                  eventFilter === "all" || types.includes(eventFilter)
+              )
               .map(({ event, types }, index) => {
-                const isHighlighted = types.includes('highlighted');
-                const isPromotional = types.includes('promotional');
-                const isDaily = types.includes('daily');
+                const isHighlighted = types.includes("highlighted");
+                const isPromotional = types.includes("promotional");
+                const isDaily = types.includes("daily");
 
                 return (
                   <div
@@ -591,7 +679,9 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <div className="font-bold text-gray-900 text-sm mb-1">{event.date}</div>
+                        <div className="font-bold text-gray-900 text-sm mb-1">
+                          {event.date}
+                        </div>
                         <div className="text-gray-700 text-sm">
                           {getEventName(event)}
                         </div>
@@ -619,21 +709,24 @@ export default function MonthView({ monthData, promotionalEvents }: MonthViewPro
                         </div>
                         <span className="text-[10px] uppercase tracking-wide text-gray-500">
                           {types
-                            .map(t =>
-                              t === 'highlighted'
-                                ? 'Highlight'
-                                : t === 'promotional'
-                                ? 'Promo'
-                                : 'Daily',
+                            .map((t) =>
+                              t === "highlighted"
+                                ? "Highlight"
+                                : t === "promotional"
+                                ? "Promo"
+                                : "Daily"
                             )
-                            .join(' • ')}
+                            .join(" • ")}
                         </span>
                       </div>
                     </div>
                   </div>
                 );
               })}
-            {combinedEventsList.filter(({ types }) => eventFilter === 'all' || types.includes(eventFilter)).length === 0 && (
+            {combinedEventsList.filter(
+              ({ types }) =>
+                eventFilter === "all" || types.includes(eventFilter)
+            ).length === 0 && (
               <div className="col-span-full text-center py-8 text-gray-500">
                 No events found for the selected filter.
               </div>
