@@ -48,6 +48,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   savedCampaigns SavedCampaign[]
+  doThisForMeInteractions DoThisForMeInteraction[]
 
   @@map("users")
 }
@@ -66,6 +67,23 @@ model SavedCampaign {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("saved_campaigns")
+}
+
+model DoThisForMeInteraction {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  campaignTitle String   @map("campaign_title")
+  hasOpened     Boolean  @default(false) @map("has_opened")
+  hasBooked     Boolean  @default(false) @map("has_booked")
+  firstOpenedAt DateTime? @map("first_opened_at")
+  lastOpenedAt  DateTime? @map("last_opened_at")
+  bookedAt      DateTime? @map("booked_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, campaignTitle])
+  @@map("do_this_for_me_interactions")
 }
 
 model VerificationToken {
