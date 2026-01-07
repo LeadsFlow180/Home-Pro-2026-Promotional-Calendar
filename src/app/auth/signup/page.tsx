@@ -70,10 +70,10 @@ function SignUpContent() {
           firstName: firstName,
           lastName: lastName,
           email: formData.email,
-          uid: data.user?.stripeCustomerId || '', // Add Stripe customer ID if available
+          uid: data.user?.stripeCustomerId || "", // Add Stripe customer ID if available
         });
       } catch (trackingError) {
-        console.error('Failed to track lead:', trackingError);
+        console.error("Failed to track lead:", trackingError);
         // Don't block signup if tracking fails
       }
 
@@ -102,8 +102,8 @@ function SignUpContent() {
     setLoading(true);
     try {
       // Store a flag to track this as a potential new signup
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('pendingAffiliateTracking', 'true');
+      if (typeof window !== "undefined") {
+        localStorage.setItem("pendingAffiliateTracking", "true");
       }
       await signIn("google", { callbackUrl: "/" });
     } catch (error) {

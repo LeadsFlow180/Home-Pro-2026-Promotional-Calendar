@@ -18,9 +18,7 @@ export default function AffiliateTracker() {
 
       if (shouldTrack === "true") {
         // Track the user
-        const { firstName, lastName } = parseFullName(
-          session.user.name || ""
-        );
+        const { firstName, lastName } = parseFullName(session.user.name || "");
 
         trackLead({
           firstName: firstName,
