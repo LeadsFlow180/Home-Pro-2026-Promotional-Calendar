@@ -114,6 +114,20 @@ export const authOptions: NextAuthOptions = {
     },
     async createUser(message) {
       console.log('New user created:', message.user.email)
+      
+      // Track new user with affiliate manager
+      // Note: Server-side tracking won't work directly with window.affiliateManager
+      // We'll need to track on the client side after OAuth redirect
+      // Store a flag in session to track on next page load
+      try {
+        if (message.user.email) {
+          // For Google OAuth users, we'll track them client-side after redirect
+          // by checking if they're a new user in the session callback
+          console.log('Will track user on client side:', message.user.email)
+        }
+      } catch (error) {
+        console.error('Error in createUser event:', error)
+      }
     },
   },
   debug: process.env.NODE_ENV === 'development',

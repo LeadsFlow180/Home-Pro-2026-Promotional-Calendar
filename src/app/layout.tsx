@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import AuthProvider from "@/components/AuthProvider";
 import { ToastProvider } from "@/components/Toast";
+import AffiliateTracker from "@/components/AffiliateTracker";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -32,6 +34,27 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
+        {/* Affiliate Manager Script */}
+        <Script
+          id="affiliate-manager"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                var t = document.createElement("script");
+                t.type = "text/javascript", t.async = !0, t.src = 'https://link.leadsflow180.com/js/am.js', t.onload = t.onreadystatechange = function() {
+                    var t = this.readyState;
+                    if (!t || "complete" == t || "loaded" == t) try {
+                      affiliateManager.init('vp9hBBCsYnCIHwlHeDl5', 'https://backend.leadconnectorhq.com', '.promotional-calendar.leadsflow180.com')
+                    } catch (t) {}
+                };
+                var e = document.getElementsByTagName("script")[0];
+                e.parentNode.insertBefore(t, e)
+              })();
+            `,
+          }}
+        />
+
         {/* Global marketing banner - shown on all pages */}
         <div className="bg-gradient-to-r from-sky-600 via-emerald-500 to-lime-400">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -70,7 +93,10 @@ export default function RootLayout({
         </div>
 
         <ToastProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <AffiliateTracker />
+            {children}
+          </AuthProvider>
         </ToastProvider>
       </body>
     </html>

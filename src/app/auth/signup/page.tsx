@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
+import { trackLead, parseFullName } from "@/lib/utils/affiliate-tracking";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -62,6 +63,20 @@ function SignUpContent() {
 
       setSuccess(true);
 
+      // Track the lead with affiliate manager
+      try {
+        const { firstName, lastName } = parseFullName(formData.name);
+        await trackLead({
+          firstName: firstName,
+          lastName: lastName,
+          email: formData.email,
+          uid: data.user?.stripeCustomerId || '', // Add Stripe customer ID if available
+        });
+      } catch (trackingError) {
+        console.error('Failed to track lead:', trackingError);
+        // Don't block signup if tracking fails
+      }
+
       // Auto sign-in after successful registration
       setTimeout(async () => {
         const result = await signIn("credentials", {
@@ -86,6 +101,10 @@ function SignUpContent() {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
+      // Store a flag to track this as a potential new signup
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('pendingAffiliateTracking', 'true');
+      }
       await signIn("google", { callbackUrl: "/" });
     } catch (error) {
       setError("Failed to sign in with Google");
